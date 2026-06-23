@@ -1,0 +1,117 @@
+---
+description: 
+alwaysApply: true
+---
+
+TECHNOLOGY REQUIREMENTS
+
+Must use ONLY:
+
+expo ~53.0.11
+react 19.0.0
+react-native 0.79.6
+expo-router ~5.1.0
+nativewind 4.1.23
+zustand ^5.0.11
+react-native-reanimated ~3.17.4
+react-native-gesture-handler ~2.24.0
+react-native-safe-area-context 5.4.0
+expo-haptics ~14.1.4
+expo-audio ^0.4.6
+@react-native-async-storage/async-storage 2.1.2
+date-fns ^4.1.0
+phosphor-react-native ^3.0.0
+typescript ~5.8.3
+
+❌ No additional dependencies allowed.
+
+PERFORMANCE REQUIREMENTS
+
+Target:
+
+60 FPS
+Low memory usage
+Minimal re-renders
+
+Required:
+
+React.memo wherever appropriate
+useCallback for all handlers
+useMemo for derived values
+useRef for mutable game state
+Zustand selectors only
+No prop drilling
+No unnecessary context providers
+No inline object creation in render
+No anonymous render callbacks
+Stable references everywhere
+RENDERING RULES
+Board must NOT re-render entirely on single state change
+Only affected components may update
+Timer updates must NOT re-render full screen tree
+Keyboard must only update affected keys
+Game UI must be split into isolated memoized layers
+ARCHITECTURE RULES
+Must strictly follow existing folder structure
+No new architecture patterns unless explicitly requested
+No missing files
+No simplified or partial implementations
+No placeholder logic
+GAMEPLAY INTEGRITY RULE (NEW — IMPORTANT)
+
+Before making ANY change:
+
+Do NOT assume bug cause
+Do NOT refactor multiple systems at once
+Do NOT “fix architecture”
+Only modify the smallest possible unit that fixes the issue
+EXECUTION CHAIN DEBUG RULE (CRITICAL ADDITION)
+
+Every gameplay feature MUST be traceable in this order:
+
+UI Event
+→ Handler
+→ Input System
+→ Game System
+→ State Update
+→ Motion System
+→ Render Output
+
+If something breaks:
+
+👉 STOP at first failing step
+👉 Fix ONLY that step
+👉 Do NOT continue down the chain
+
+SINGLE-SYSTEM CHANGE RULE (CRITICAL ADDITION)
+Only ONE system may be modified per iteration:
+UI OR Input OR Engine OR Store OR Motion
+Never modify multiple layers in one response
+Never combine refactor + fix
+RUNTIME VERIFICATION RULE (CRITICAL ADDITION)
+
+Before and after any change:
+
+Confirm runtime behavior with logs
+Verify actual execution path, not intended design
+Do not trust static code structure
+NO OVER-ENGINEERING RULE
+No unnecessary abstractions
+No premature optimization
+No rewriting working systems
+DEBUGGING RULE
+
+If a feature is broken:
+
+Identify first broken link in execution chain
+Add logs ONLY to that layer
+Fix ONLY that layer
+Re-test before touching anything else
+OUTPUT RULE
+No partial implementations
+No skipped files
+No silent changes
+Always explain which exact layer was modified
+DOCUMENTATION RULE
+Always update README.md after changes
+README must reflect actual runtime architecture, not intended design

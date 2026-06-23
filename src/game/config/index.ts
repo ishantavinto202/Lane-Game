@@ -1,0 +1,25 @@
+export {
+  ENGINE_CONFIG,
+} from './engine.config';
+
+export {
+  AUDIO_CONFIG,
+  COIN_CONFIG,
+  COLLISION_CONFIG,
+  CONTROLS_CONFIG,
+  DIFFICULTY_CONFIG,
+  GAME_CONFIG,
+  HEALTH_CONFIG,
+  SCORE_CONFIG,
+  SPAWN_CONFIG,
+} from './game.config';
+
+export {
+  ROAD_COLORS,
+  ROAD_CONTROLS,
+  ROAD_LAYOUT,
+  ROAD_PLAYER,
+  ROAD_SCROLL,
+  ROAD_TILE,
+  ROAD_WORLD,
+} from './road.config';
