@@ -19,7 +19,6 @@ function parseStats(raw: string | null): PersistedPlayerStats {
       bestScore: typeof parsed.bestScore === 'number' ? parsed.bestScore : 0,
       totalRuns: typeof parsed.totalRuns === 'number' ? parsed.totalRuns : 0,
       totalDistance: typeof parsed.totalDistance === 'number' ? parsed.totalDistance : 0,
-      lifetimeCoins: typeof parsed.lifetimeCoins === 'number' ? parsed.lifetimeCoins : 0,
       lastPlayedAt: typeof parsed.lastPlayedAt === 'string' ? parsed.lastPlayedAt : null,
       version: STORAGE_CONSTANTS.SCHEMA_VERSION,
     };
@@ -67,13 +66,12 @@ export const playerStatsPersistence: PersistenceContract = {
     return next;
   },
 
-  async persistRunEnd(snapshot: ScoreSnapshot, runCoins: number): Promise<PersistedPlayerStats> {
+  async persistRunEnd(snapshot: ScoreSnapshot): Promise<PersistedPlayerStats> {
     const current = await playerStatsPersistence.loadPlayerStats();
     const next: PersistedPlayerStats = {
       bestScore: Math.max(current.bestScore, snapshot.bestScore),
       totalRuns: current.totalRuns + 1,
       totalDistance: current.totalDistance + metersFromSnapshot(snapshot),
-      lifetimeCoins: current.lifetimeCoins + Math.max(0, runCoins),
       lastPlayedAt: new Date().toISOString(),
       version: STORAGE_CONSTANTS.SCHEMA_VERSION,
     };

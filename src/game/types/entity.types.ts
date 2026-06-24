@@ -41,6 +41,12 @@ export interface ShieldEntity extends BaseEntity {
   readonly speed: number;
 }
 
+export interface SpeedBoostEntity extends BaseEntity {
+  readonly assetId: 'SPEED_BOOST';
+  readonly lane: LaneIndex;
+  readonly speed: number;
+}
+
 /** Pool-friendly mutable refs used by the engine (not React state). */
 export interface EntityRefs {
   readonly player: PlayerEntity;

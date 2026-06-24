@@ -1,24 +1,45 @@
 import { SCORE_CONFIG } from '../../config';
-import type { DifficultyRuntime, PersistedPlayerStats, ScoreSnapshot } from '../../types';
+import type { PersistedPlayerStats, ScoreSnapshot } from '../../types';
 import { EMPTY_PERSISTED_STATS } from '../../types';
 
-/** Distance-based scoring with best-score tracking. */
+/** Time-based scoring with best-score tracking. */
 export class ScoreSystem {
   readonly id = 'score-system' as const;
 
-  private distanceTraveled = 0;
+  private survivalTimeMs = 0;
+  private scoreAccumulatorMs = 0;
   private currentScore = 0;
   private bestScore = 0;
 
   reset(): void {
-    this.distanceTraveled = 0;
+    this.survivalTimeMs = 0;
+    this.scoreAccumulatorMs = 0;
     this.currentScore = 0;
   }
 
-  addDistance(deltaPx: number, _difficulty: DifficultyRuntime): ScoreSnapshot {
-    this.distanceTraveled += deltaPx;
-    const meters = this.distanceTraveled * SCORE_CONFIG.metersPerPixel;
-    this.currentScore = Math.floor(meters * SCORE_CONFIG.pointsPerMeter);
+  /** Accumulates active play time and awards +5 every 1 second survived. */
+  addSurvivalTime(deltaMs: number, scoreRateMultiplier = 1): ScoreSnapshot {
+    this.survivalTimeMs += deltaMs;
+    this.scoreAccumulatorMs += deltaMs * scoreRateMultiplier;
+
+    const { pointsIntervalMs, pointsPerInterval } = SCORE_CONFIG;
+    while (this.scoreAccumulatorMs >= pointsIntervalMs) {
+      this.scoreAccumulatorMs -= pointsIntervalMs;
+      this.currentScore += pointsPerInterval;
+    }
+
+    return this.getSnapshot();
+  }
+
+  /** Awards instant score from a coin pickup. */
+  addPickupBonus(points: number): ScoreSnapshot {
+    this.currentScore += points;
+    return this.getSnapshot();
+  }
+
+  /** Applies a score penalty clamped at zero. */
+  applyScorePenalty(amount: number): ScoreSnapshot {
+    this.currentScore = Math.max(0, this.currentScore - amount);
     return this.getSnapshot();
   }
 
@@ -26,7 +47,7 @@ export class ScoreSystem {
     return {
       currentScore: this.currentScore,
       bestScore: this.bestScore,
-      distanceTraveled: this.distanceTraveled,
+      distanceTraveled: this.getEquivalentDistancePx(),
     };
   }
 
@@ -50,5 +71,9 @@ export class ScoreSystem {
 
   loadFromStats(stats: PersistedPlayerStats = EMPTY_PERSISTED_STATS): void {
     this.bestScore = stats.bestScore;
+  }
+
+  private getEquivalentDistancePx(): number {
+    return (this.survivalTimeMs / 1000) * SCORE_CONFIG.equivalentScrollSpeedPxPerSec;
   }
 }

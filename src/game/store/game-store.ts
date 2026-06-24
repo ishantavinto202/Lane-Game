@@ -1,27 +1,33 @@
 import { create } from 'zustand';
 
 import { GameStatus } from '../types';
-import { EMPTY_PERSISTED_STATS } from '../types';
 
 import type { GameStore } from './game-store.types';
 import {
-  INITIAL_COIN_COLLECT_EFFECT,
   INITIAL_HEALTH,
   INITIAL_RUN_STATS,
   INITIAL_SCORE_SNAPSHOT,
 } from './game-store.types';
 
+const clearScoreFeedbackFloaters = {
+  coinScoreFloaters: [] as const,
+  obstacleEffectFloaters: [] as const,
+};
+
 export const useGameStore = create<GameStore>((set) => ({
-  status: GameStatus.Playing,
+  status: GameStatus.Countdown,
   resetNonce: 0,
   collisionFlashNonce: 0,
   damageBlinkNonce: 0,
   health: INITIAL_HEALTH,
-  runCoins: 0,
-  lifetimeCoins: EMPTY_PERSISTED_STATS.lifetimeCoins,
-  coinCollectEffect: INITIAL_COIN_COLLECT_EFFECT,
+  coinScoreFloaters: [],
+  nextCoinScoreFloaterId: 1,
+  obstacleEffectFloaters: [],
+  nextObstacleEffectFloaterId: 1,
   shieldActive: false,
   shieldBreakNonce: 0,
+  speedBoostActive: false,
+  speedBoostRemainingRatio: 0,
   scoreSnapshot: INITIAL_SCORE_SNAPSHOT,
   runStats: INITIAL_RUN_STATS,
   setStatus: (status) => set({ status }),
@@ -29,12 +35,14 @@ export const useGameStore = create<GameStore>((set) => ({
   pausePlaying: () => set({ status: GameStatus.Paused }),
   resetToReady: () =>
     set((state) => ({
-      status: GameStatus.Playing,
+      status: GameStatus.Countdown,
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
-      runCoins: 0,
       shieldActive: false,
       shieldBreakNonce: 0,
+      speedBoostActive: false,
+      speedBoostRemainingRatio: 0,
+      ...clearScoreFeedbackFloaters,
       scoreSnapshot: {
         currentScore: 0,
         bestScore: state.scoreSnapshot.bestScore,
@@ -43,12 +51,14 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
   restartRun: () =>
     set((state) => ({
-      status: GameStatus.Playing,
+      status: GameStatus.Countdown,
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
-      runCoins: 0,
       shieldActive: false,
       shieldBreakNonce: 0,
+      speedBoostActive: false,
+      speedBoostRemainingRatio: 0,
+      ...clearScoreFeedbackFloaters,
       scoreSnapshot: {
         currentScore: 0,
         bestScore: state.scoreSnapshot.bestScore,
@@ -58,15 +68,29 @@ export const useGameStore = create<GameStore>((set) => ({
   setScoreSnapshot: (scoreSnapshot) => set({ scoreSnapshot }),
   setRunStats: (runStats) => set({ runStats }),
   setHealth: (health) => set({ health }),
-  setRunCoins: (runCoins) => set({ runCoins }),
-  setLifetimeCoins: (lifetimeCoins) => set({ lifetimeCoins }),
   triggerCoinCollect: (x, y) =>
+    set((state) => {
+      const id = state.nextCoinScoreFloaterId;
+      return {
+        coinScoreFloaters: [...state.coinScoreFloaters, { id, x, y }],
+        nextCoinScoreFloaterId: id + 1,
+      };
+    }),
+  dismissCoinScoreFloater: (id) =>
     set((state) => ({
-      coinCollectEffect: {
-        x,
-        y,
-        nonce: state.coinCollectEffect.nonce + 1,
-      },
+      coinScoreFloaters: state.coinScoreFloaters.filter((floater) => floater.id !== id),
+    })),
+  triggerObstacleEffectFloater: (x, y, label) =>
+    set((state) => {
+      const id = state.nextObstacleEffectFloaterId;
+      return {
+        obstacleEffectFloaters: [...state.obstacleEffectFloaters, { id, x, y, label }],
+        nextObstacleEffectFloaterId: id + 1,
+      };
+    }),
+  dismissObstacleEffectFloater: (id) =>
+    set((state) => ({
+      obstacleEffectFloaters: state.obstacleEffectFloaters.filter((floater) => floater.id !== id),
     })),
   setShieldActive: (shieldActive) => set({ shieldActive }),
   triggerShieldBreak: () =>
@@ -75,6 +99,9 @@ export const useGameStore = create<GameStore>((set) => ({
       shieldBreakNonce: state.shieldBreakNonce + 1,
     })),
   clearShieldState: () => set({ shieldActive: false, shieldBreakNonce: 0 }),
+  setSpeedBoostState: (speedBoostActive, speedBoostRemainingRatio) =>
+    set({ speedBoostActive, speedBoostRemainingRatio }),
+  clearSpeedBoostState: () => set({ speedBoostActive: false, speedBoostRemainingRatio: 0 }),
   triggerCollisionFlash: () =>
     set((state) => ({
       collisionFlashNonce: state.collisionFlashNonce + 1,

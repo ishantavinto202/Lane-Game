@@ -49,7 +49,7 @@ Phase 3 adds lane hazards, collision detection, distance-based scoring, and best
 
 ### What You Can Run Today
 
-- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80 **high-contrast debug render**)
+- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80 **high-contrast debug render**, Puddle 72×72 red circle)
 
 ### Temporary Barrier Debug Test (active)
 
@@ -64,14 +64,14 @@ Barrier visibility confirmation is active — **spawn logic unchanged**:
 | Stripes | Diagonal black bands (Barrier only) |
 
 **How to verify:** Play 2–3 minutes. Dev logs now trace obstacle lifecycle with `[ObstacleCreated]`, `[ObstacleReused]`, `[ObstacleActivated]`, `[ObstacleDeactivated]`, `[ObstacleRendered]`, and `[RenderSlotState]` entries so Barrier can be followed from pool slot assignment through render bridge activation and cleanup. Obstacle render bridge metadata is stored as top-level slot fields so Reanimated worklets only receive shared motion values.
-- **Spawn cycle** uses deterministic `[Tire, Cone, Crate, Barrier]` rotation for the whole run, guaranteeing every four successful obstacle pulls include all four types
-- **Opening showcase cadence** temporarily uses a 900ms obstacle interval for the first 4 successful spawns, introducing Tire, Cone, Crate, and Barrier early while preserving natural vertical spacing; normal difficulty-based spawn timing resumes afterward
-- Failed placements are retried before the deterministic cycle advances, so a blocked type is not silently skipped
+- **Spawn bag** holds one of each obstacle type (Tire, Cone, Crate, Barrier, Puddle), shuffled on creation and on each refill; every five successful pulls depletes exactly one full bag with no type starvation
+- **Opening showcase cadence** temporarily uses a 900ms obstacle interval for the first 4 successful spawns, introducing Tire, Cone, Crate, and Barrier early while preserving natural vertical spacing; Puddle enters on the fifth bag pull; normal difficulty-based spawn timing resumes afterward
+- Failed placements are retried via `returnType` before the next bag pull, so a blocked type is not lost or skipped permanently
 - **Pickup-safe placement** — resolved obstacle AABB must not intersect any active coin or shield AABB expanded by 25px (`COIN_CONFIG.obstacleSafetyMarginPx`); lane retry up to `obstacleSpawnLaneRetryLimit` across `obstacleSpawnYRetryOffsetsPx`, then skip spawn
 - Fair spawn logic always leaves at least one open lane — no impossible walls
 - Obstacles move downward at game speed via pooled Reanimated shared values (no per-frame React state)
 - Lane-based collision → **Game Over** stops engine, road, and obstacles + heavy haptic
-- Score increases with distance survived; best score persisted to AsyncStorage
+- Score increases by **+5 every 1 second survived** while actively playing; best score persisted to AsyncStorage
 - **Pause** button (top-right) freezes road, obstacles, and input; **Resume** continues
 - **Game Over** overlay shows score, best score, and **Play Again**
 
@@ -83,7 +83,7 @@ src/components/lane-game/
   overlays/GameOverOverlay.tsx     Full-screen game over modal
 ```
 
-**Engine rule:** `GameStatus.Playing` → rAF loop runs · `Paused` / `GameOver` → engine stopped, input disabled.
+**Engine rule:** `GameStatus.Playing` → rAF loop runs · `Countdown` / `Paused` / `GameOver` → engine stopped, input disabled · score timer starts only after countdown `GO!`.
 
 **Play Again** (`restartRun`) → reset road, obstacles, player (center lane), score → `Playing`.
 
@@ -95,7 +95,7 @@ src/game/systems/
   obstacle/obstacle-spawn-bag.ts   Shuffled spawn bag + returnType on skip
   obstacle/obstacle-spawn-debug.ts   Unified Tire/Cone/Crate/Barrier audit (50-attempt summary) + legacy logs
   collision/CollisionSystem.ts     Lane + Y overlap detection
-  score/ScoreSystem.ts               Distance → score, best tracking
+  score/ScoreSystem.ts               Time-based +5/sec score, best tracking
   persistence/player-stats.persistence.ts  AsyncStorage best score
 src/components/lane-game/
   obstacle/ObstacleSprite.tsx      Memoized pooled obstacle render
@@ -109,7 +109,7 @@ rAF tick →
   RoadSystem.updateScroll() →
   ObstacleSystem.updateObstacles() →
   CollisionSystem.evaluate() →
-  ScoreSystem.addDistance() →
+  ScoreSystem.addSurvivalTime() →
   Reanimated shared values (render)
 ```
 
@@ -252,17 +252,16 @@ PlayerCar cancels blink opacity → 1
 
 ## Phase 4.2 — Coin Collection System (Complete)
 
-Adds lane collectible coins with independent spawning, overlap collection, run HUD, and lifetime persistence.
+Adds lane collectible coins with independent spawning, overlap collection, and instant score rewards.
 
 ### What You Can Run Today
 
 - **Coins** spawn independently in lanes 0–2 (38×38 voxel coin sprite from `assets/voxel/Coin.png`, pooled Reanimated slots)
 - **Fair placement** — shuffled lane + Y-offset retry; full coin AABB must not intersect any active obstacle AABB expanded by 25px or any active shield pickup AABB; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
 - **Symmetrical spawn validation** — coins and shields reject buffered obstacle bounds at spawn; obstacles reject buffered coin/shield bounds at spawn (same margin, same `computeEntityVisualBounds` helpers)
-- **Collection** — player overlap removes coin, increments run count, light haptic, gold burst effect
-- **HUD** — top center shows `❤️ ❤️ ❤️     🪙 X` (current run coins, instant update)
-- **Retry** — run coin count resets to 0, active coin pool cleared, spawning restarts
-- **Persistence** — lifetime coins saved to AsyncStorage on game over (`runCoins` added to `lifetimeCoins`)
+- **Collection** — player overlap removes coin, adds **+20 score** instantly, light haptic, floating `+20 SCORE` burst
+- **HUD** — top center shows hearts + shield icon only (no coin wallet)
+- **Retry** — active coin pool cleared, spawning restarts; score resets via `ScoreSystem.reset()`
 
 ### New Modules
 
@@ -276,7 +275,7 @@ src/game/assets/definitions/
   coin.assets.ts                   38×38 coin asset + `COIN_IMAGE_SOURCE` (323×323 voxel PNG)
 src/components/lane-game/
   coin/CoinSprite.tsx              Memoized pooled coin render
-  coin/CoinCollectBurst.tsx        Gold pop on collection
+  coin/CoinCollectBurst.tsx        Independent +20 floaters (hold → fade → drift)
   layers/CoinLayer.tsx             Between Road and Obstacles (pointerEvents="none")
 ```
 
@@ -287,7 +286,7 @@ GameEngine.tick() →
   CoinSystem.updateCoins() →
   createPlayerCollisionProbe() + createCoinCollisionProbes() →
   CoinSystem.evaluateCollection() →
-  removeCoinById() + runCoins++ + setRunCoins + triggerCoinCollect + light haptic
+  removeCoinById() + ScoreSystem.addPickupBonus(+20) + setScoreSnapshot + triggerCoinCollect + light haptic
 ```
 
 Coin collection does **not** call `HealthSystem` or obstacle collision handlers.
@@ -301,7 +300,7 @@ rAF tick →
   CoinSystem.updateCoins(obstacles) →
   CollisionSystem.evaluate() (obstacles only) →
   CoinSystem.evaluateCollection() →
-  ScoreSystem.addDistance() →
+  ScoreSystem.addSurvivalTime() →
   Reanimated shared values (render)
 ```
 
@@ -315,22 +314,15 @@ rAF tick →
 6. **Player**
 7. **Controls**
 8. **UI badge** — score/status/best (top left)
-9. **HealthHud** — hearts + run coins (top center)
+9. **HealthHud** — hearts + shield icon (top center)
 10. **PauseButton** — top-right
 11. **PauseOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
 
 ### Retry Integration
 
 ```
-restartRun() → runCoins: 0 in store → GameEngine.reset() → coinSystem.reset()
+restartRun() → GameEngine.reset() → coinSystem.reset()
 ```
-
-### Persistence
-
-| Field | Scope | Updated |
-|-------|-------|---------|
-| `runCoins` | Zustand (current run) | On each collection |
-| `lifetimeCoins` | AsyncStorage + Zustand | On game over via `persistRunEnd(snapshot, runCoins)` |
 
 ---
 
@@ -340,11 +332,11 @@ Adds a collectible shield that absorbs one obstacle hit without health loss or i
 
 ### What You Can Run Today
 
-- **Shield pickups** spawn in lanes 0–2 (44×44 blue orb, pooled Reanimated slots, obstacle-safe + coin-safe placement with lane/Y retry)
+- **Shield pickups** spawn in lanes 0–2 (44×44 Shield voxel sprite, pooled Reanimated slots, obstacle-safe + coin-safe placement with lane/Y retry)
 - **Collection** — overlap activates shield (`shieldActive = true`), light haptic, pickup removed; ignored if shield already active
 - **Shield bubble** — semi-transparent blue energy ring follows player above the car while active
 - **Collision absorb** — when shield active: obstacle destroyed, shield consumed, blue break flash, heavy haptic; no health loss, no damage blink, no red collision flash, no invulnerability
-- **HUD** — `🛡️` shown in top badge only while shield is active
+- **HUD** — Shield voxel icon shown in top badge only while shield is active
 - **Retry** — `restartRun()` clears shield state and despawns all shield pickups
 
 ### New Modules
@@ -355,7 +347,7 @@ src/game/systems/shield/
   shield-motion.types.ts           Reanimated render bridge
   shield.contract.ts
 src/game/assets/definitions/
-  shield.assets.ts                 44×44 shield pickup asset
+  shield.assets.ts                 44×44 pickup + `SHIELD_IMAGE_SOURCE` (Shield voxel PNG)
 src/components/lane-game/
   shield/ShieldSprite.tsx          Memoized pooled pickup render
   shield/ShieldBubble.tsx          Player energy bubble (follows motion shared values)
@@ -385,7 +377,7 @@ rAF tick →
   ShieldSystem.updateShields(obstacles) →
   evaluateCoinCollection() + evaluateShieldCollection() →
   CollisionSystem.evaluate() → shield absorb OR health damage →
-  ScoreSystem.addDistance() →
+  ScoreSystem.addSurvivalTime() →
   Reanimated shared values (render)
 ```
 
@@ -400,16 +392,213 @@ rAF tick →
 7. **Player** + **ShieldBubble** + **ShieldBreakFlash**
 8. **Controls**
 9. **UI badge** — score/status/best (top left)
-10. **HealthHud** — hearts + shield icon + run coins (top center)
+10. **HealthHud** — hearts + shield icon (top center)
 11. **PauseButton** — top-right
-12. **PauseOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
+12. **PauseOverlay** / **CountdownOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
 
 ### Retry Integration
 
 ```
-restartRun() → shieldActive: false + shieldBreakNonce: 0 in store →
-  GameEngine.reset() → shieldSystem.reset()
+restartRun() → GameStatus.Countdown + resetNonce → GameEngine.reset()/stop() →
+  CountdownOverlay → startPlaying() → GameEngine.start()
 ```
+
+---
+
+## Phase 5.1 — Game Start Countdown (Complete)
+
+Phase 5.1 adds a pre-run countdown before gameplay begins.
+
+### What You Can Run Today
+
+- App launch and **Retry** both enter `GameStatus.Countdown` first
+- Centered overlay shows **3 → 2 → 1 → GO!**
+- Player input, obstacle spawning/movement, road scroll, and score timer remain paused until `GO!`
+- Overlay unmounts automatically when status transitions to `Playing`
+- Pause button stays hidden during countdown
+
+### New Module
+
+```txt
+src/components/lane-game/
+  overlays/CountdownOverlay.tsx   Centered 3-2-1-GO sequence + auto-start
+src/game/config/game.config.ts    COUNTDOWN_CONFIG (stepDurationMs, goHoldMs)
+```
+
+### Countdown Flow
+
+```
+App launch / restartRun() → GameStatus.Countdown →
+  CountdownOverlay (3 → 2 → 1 → GO!) → startPlaying() →
+  GameStatus.Playing → GameEngine.start() + input enabled
+```
+
+### Execution Chain
+
+```
+UI (CountdownOverlay timer)
+  → Zustand startPlaying()
+  → useGameEngine syncEngineToStatus()
+  → GameEngine.start() + setInputEnabled(true)
+  → existing Phase 3–4 tick chain (obstacles, score, collision)
+```
+
+---
+
+## Phase 5.2 — Score System Refactor (Complete)
+
+Phase 5.2 replaces distance-based scoring with survival time scoring.
+
+### What You Can Run Today
+
+- Score increases by **+5 every 1 second** while `GameStatus.Playing`
+- No score gain during **Countdown**, **Pause**, or **Game Over** (engine stopped → no survival time accumulated)
+- Accumulator preserves partial seconds across pause/resume — no score drift or loss
+- Best score and run distance persistence unchanged
+
+### Scoring Rules
+
+| Setting | Value |
+|---------|-------|
+| Points per interval | **+5** |
+| Interval | **1000ms** active play time |
+| Accumulator | Frame `deltaMs` summed; points awarded in whole intervals only |
+| HUD publish | Throttled via `SCORE_CONFIG.hudUpdateIntervalMs` (100ms) |
+
+### Execution Chain
+
+```
+GameEngine.tick(deltaMs) [Playing only]
+  → ScoreSystem.addSurvivalTime(deltaMs)
+  → accumulator += deltaMs
+  → every 1000ms accumulated → currentScore += 5
+  → publishScoreIfDue() → Zustand HUD
+```
+
+---
+
+## Phase 5.3 — Coin → Score Pickup Refactor (Complete)
+
+Phase 5.3 removes coin wallet/currency tracking. Coins remain spawnable collectibles that grant instant score.
+
+### What You Can Run Today
+
+- Collecting a coin adds **+20 score** immediately via `ScoreSystem.addPickupBonus()`
+- Floating pickup feedback shows **`+20`** at collection position — each pickup spawns an independent floater
+- Floaters hold at full opacity for **1.1s**, then fade out over **0.4s** with upward drift (~1.5s total)
+- No shared animation state between concurrent pickups
+- No `runCoins` or `lifetimeCoins` in Zustand store
+- No coin currency persisted to AsyncStorage
+- Coin spawn, pool, movement, and collision collection unchanged
+
+### Pickup Flow
+
+```
+GameEngine.evaluateCoinCollection()
+  → CoinSystem.evaluateCollection() [unchanged]
+  → removeCoinById()
+  → ScoreSystem.addPickupBonus(COIN_CONFIG.scoreReward)
+  → setScoreSnapshot() + triggerCoinCollect() + light haptic
+```
+
+### Config
+
+| Setting | Value |
+|---------|-------|
+| `COIN_CONFIG.scoreReward` | **20** |
+| `COIN_CONFIG.collectEffectHoldMs` | **1100** (visible at full opacity) |
+| `COIN_CONFIG.collectEffectFadeMs` | **400** (smooth fade-out) |
+| `COIN_CONFIG.collectEffectFloatPx` | **32** (upward drift) |
+
+---
+
+## Phase 5.4 — Obstacle Personality System (Complete)
+
+Phase 5.4 adds per-type collision personalities resolved after a standard obstacle hit.
+
+### What You Can Run Today
+
+- **Puddle** (`OBSTACLE_PUDDLE`) spawns via the existing shuffled spawn bag — spawn fairness unchanged
+- Puddle collision applies **-25 score** (`score = max(0, score - 25)`) with no health loss
+- Red floating **`-25`** feedback at the hit position (independent floater per collision)
+- Tire, Cone, Crate, and Barrier keep the original health-damage collision path
+
+### New Modules
+
+```txt
+src/game/systems/obstacle/
+  obstacle-effect.resolver.ts      Maps obstacle type → collision personality
+src/components/lane-game/
+  obstacle/ObstacleEffectFloaters.tsx   Red -25 floaters
+  ui/FloatingScoreLabel.tsx             Shared hold → fade → drift label
+src/game/config/game.config.ts    OBSTACLE_PERSONALITY_CONFIG
+```
+
+### Effect Resolution Chain
+
+```
+CollisionSystem.evaluate() [unchanged]
+  → GameEngine.handleObstacleHit()
+  → resolveObstacleCollisionEffect(assetId)
+  → OBSTACLE_PUDDLE → ScoreSystem.applyScorePenalty(25) + triggerObstacleEffectFloater("-25")
+  → all other types → applyObstacleHealthDamage() [unchanged]
+```
+
+### Config
+
+| Setting | Value |
+|---------|-------|
+| `OBSTACLE_PERSONALITY_CONFIG.puddleScorePenalty` | **25** |
+| `OBSTACLE_PERSONALITY_CONFIG.effectHoldMs` | **1100** |
+| `OBSTACLE_PERSONALITY_CONFIG.effectFadeMs` | **400** |
+| `OBSTACLE_PERSONALITY_CONFIG.effectFloatPx` | **32** |
+
+---
+
+## Phase 5.5 — Speed Boost Power-Up (Complete)
+
+Phase 5.5 adds a collectible ⚡ speed boost that temporarily doubles world scroll speed and score gain rate.
+
+### What You Can Run Today
+
+- **Speed Boost pickups** spawn independently (44×44 Blue Thunder voxel sprite, pooled Reanimated slots, obstacle/coin/shield-safe placement)
+- **Collection** activates a **3 second** boost — world speed ×2 and score rate ×2 (`+10/sec` instead of `+5/sec`)
+- Re-picking during an active boost **refreshes duration** to 3s (no infinite stack)
+- Boost ends automatically — speed and score rate revert to baseline
+- **HUD** shows Blue Thunder icon, countdown seconds, and shrinking progress bar while active
+
+### New Modules
+
+```txt
+src/game/systems/speed-boost/
+  SpeedBoostSystem.ts              Spawn, pool, move, collection probes
+  SpeedBoostRuntime.ts             Active boost timer + multipliers
+  speed-boost-motion.types.ts      Reanimated render bridge
+src/game/assets/definitions/
+  speed-boost.assets.ts            44×44 pickup + `SPEED_BOOST_IMAGE_SOURCE` (Blue Thunder voxel PNG)
+src/components/lane-game/
+  speed-boost/SpeedBoostSprite.tsx Memoized pooled pickup render
+  layers/SpeedBoostLayer.tsx       Between Shield and Obstacle layers
+  ui/SpeedBoostHud.tsx             ⚡ icon + timer + progress bar
+```
+
+### Boost Flow
+
+```
+GameEngine.tick()
+  → SpeedBoostRuntime.update(deltaMs)
+  → effectiveSpeed = difficulty.speed × speedMultiplier
+  → scoreRateMultiplier applied in ScoreSystem.addSurvivalTime()
+  → evaluateSpeedBoostCollection() → SpeedBoostRuntime.activate() [refresh timer]
+```
+
+### Config
+
+| Setting | Value |
+|---------|-------|
+| `SPEED_BOOST_CONFIG.durationMs` | **3000** |
+| `SPEED_BOOST_CONFIG.speedMultiplier` | **2** |
+| `SPEED_BOOST_CONFIG.scoreRateMultiplier` | **2** |
 
 ---
 
@@ -429,9 +618,9 @@ restartRun() → shieldActive: false + shieldBreakNonce: 0 in store →
 | **CollisionSystem** | Lane + Y overlap detection | ✅ |
 | **HealthSystem** | 3-health pool, 1000ms invulnerability | ✅ |
 | **CoinSystem** | Independent spawn, pool, move, obstacle-safe placement, collection | ✅ |
-| **ScoreSystem** | Distance scoring, best score | ✅ |
+| **ScoreSystem** | Time-based +5/sec scoring, best score | ✅ |
 | **AudioManager** | Preloaded SFX (lane, collision, game over) | ✅ |
-| **Persistence** | Best score, total runs, total distance, lifetime coins | ✅ |
+| **Persistence** | Best score, total runs, total distance | ✅ |
 | **Zustand store** | Status + score + health + run coins + run stats + damage flash | ✅ |
 
 **Not implemented yet:** decorations, swipe gestures, settings persistence UI.
@@ -460,7 +649,7 @@ ControlButton → InputManager → PlayerSystem.tryLaneChange()
 
 - **Button controls** wired now (`source: 'button'`)
 - **Swipe controls** will call the same API with `source: 'swipe'` — no duplicated logic
-- Input enabled only when `GameStatus.Playing`
+- Input enabled only when `GameStatus.Playing` (disabled during `Countdown`)
 - Debounce: **50ms** between accepted requests
 
 ### Animation Architecture

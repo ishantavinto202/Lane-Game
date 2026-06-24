@@ -1,6 +1,7 @@
 /** Score accumulation rules and formatting metadata. */
 export interface ScorePolicy {
-  readonly pointsPerMeter: number;
+  readonly pointsPerInterval: number;
+  readonly pointsIntervalMs: number;
   readonly displayDecimals: number;
   readonly hudUpdateIntervalMs: number;
 }
@@ -17,7 +18,6 @@ export interface PersistedPlayerStats {
   readonly bestScore: number;
   readonly totalRuns: number;
   readonly totalDistance: number;
-  readonly lifetimeCoins: number;
   readonly lastPlayedAt: string | null;
   readonly version: number;
 }
@@ -33,7 +33,6 @@ export const EMPTY_PERSISTED_STATS: PersistedPlayerStats = {
   bestScore: 0,
   totalRuns: 0,
   totalDistance: 0,
-  lifetimeCoins: 0,
   lastPlayedAt: null,
   version: 1,
 } as const;

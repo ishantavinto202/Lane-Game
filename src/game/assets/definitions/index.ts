@@ -1,11 +1,13 @@
 export { COIN_ASSET } from './coin.assets';
-export { SHIELD_ASSET } from './shield.assets';
+export { SHIELD_ASSET, SHIELD_IMAGE_SOURCE } from './shield.assets';
+export { SPEED_BOOST_ASSET, SPEED_BOOST_IMAGE_SOURCE } from './speed-boost.assets';
 
 export { OBSTACLE_ASSETS, OBSTACLE_ASSET_MAP } from './obstacle.assets';
 export {
   OBSTACLE_BARRIER_ASSET,
   OBSTACLE_CONE_ASSET,
   OBSTACLE_CRATE_ASSET,
+  OBSTACLE_PUDDLE_ASSET,
   OBSTACLE_TIRE_ASSET,
 } from './obstacle.assets';
 

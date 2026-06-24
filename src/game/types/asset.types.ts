@@ -68,10 +68,12 @@ export type AssetId =
   | 'PLAYER_CAR'
   | 'COIN'
   | 'SHIELD'
+  | 'SPEED_BOOST'
   | 'OBSTACLE_TIRE'
   | 'OBSTACLE_CONE'
   | 'OBSTACLE_CRATE'
   | 'OBSTACLE_BARRIER'
+  | 'OBSTACLE_PUDDLE'
   | 'ROAD_SURFACE'
   | 'ROAD_LANE_DIVIDER'
   | 'SIDEWALK_TILE'
@@ -79,7 +81,7 @@ export type AssetId =
 
 export type ObstacleAssetId = Extract<
   AssetId,
-  'OBSTACLE_TIRE' | 'OBSTACLE_CONE' | 'OBSTACLE_CRATE' | 'OBSTACLE_BARRIER'
+  'OBSTACLE_TIRE' | 'OBSTACLE_CONE' | 'OBSTACLE_CRATE' | 'OBSTACLE_BARRIER' | 'OBSTACLE_PUDDLE'
 >;
 
 export type RoadAssetId = Extract<

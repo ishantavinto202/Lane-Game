@@ -8,6 +8,7 @@ import { GameStatus } from '@/src/game/types';
 
 const STATUS_LABELS: Record<GameStatus, string> = {
   [GameStatus.Ready]: 'Ready',
+  [GameStatus.Countdown]: 'Get Ready',
   [GameStatus.Playing]: 'Playing',
   [GameStatus.Paused]: 'Paused',
   [GameStatus.GameOver]: 'Game Over',

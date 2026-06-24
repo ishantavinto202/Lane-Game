@@ -1,17 +1,29 @@
 import type { ObstacleAssetId } from '../../types';
 
-/** Deterministic cycle — guarantees every four pulls include all obstacle types. */
-const OBSTACLE_VARIETY_CYCLE: readonly ObstacleAssetId[] = [
+/** One of each obstacle type per bag refill. */
+const OBSTACLE_BAG_TEMPLATE: readonly ObstacleAssetId[] = [
   'OBSTACLE_TIRE',
   'OBSTACLE_CONE',
   'OBSTACLE_CRATE',
   'OBSTACLE_BARRIER',
+  'OBSTACLE_PUDDLE',
 ] as const;
 
-/** Deterministic spawn cycle — one pull per spawn, retrying failed placements first. */
+function shuffleBag(types: readonly ObstacleAssetId[]): ObstacleAssetId[] {
+  const bag = [...types];
+  for (let i = bag.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = bag[i]!;
+    bag[i] = bag[j]!;
+    bag[j] = current;
+  }
+  return bag;
+}
+
+/** Shuffled spawn bag — one pull per spawn, retrying failed placements first. */
 export class ObstacleSpawnBag {
   private retryQueue: ObstacleAssetId[] = [];
-  private cycleIndex = 0;
+  private bag: ObstacleAssetId[] = shuffleBag(OBSTACLE_BAG_TEMPLATE);
 
   pullNext(): ObstacleAssetId {
     const retry = this.retryQueue.shift();
@@ -19,18 +31,20 @@ export class ObstacleSpawnBag {
       return retry;
     }
 
-    const next = OBSTACLE_VARIETY_CYCLE[this.cycleIndex]!;
-    this.cycleIndex = (this.cycleIndex + 1) % OBSTACLE_VARIETY_CYCLE.length;
-    return next;
+    if (this.bag.length === 0) {
+      this.bag = shuffleBag(OBSTACLE_BAG_TEMPLATE);
+    }
+
+    return this.bag.shift()!;
   }
 
-  /** Retries a failed placement before advancing the deterministic cycle. */
+  /** Retries a failed placement before pulling the next bag entry. */
   returnType(assetId: ObstacleAssetId): void {
     this.retryQueue.unshift(assetId);
   }
 
   reset(): void {
     this.retryQueue = [];
-    this.cycleIndex = 0;
+    this.bag = shuffleBag(OBSTACLE_BAG_TEMPLATE);
   }
 }

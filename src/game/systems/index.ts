@@ -16,6 +16,10 @@ export type { PlayerMotionSharedValues } from './player/PlayerMotionController';
 export type { ObstacleSystemContract } from './obstacle/obstacle.contract';
 export { ObstacleSystem } from './obstacle/ObstacleSystem';
 export type { ObstacleRenderBridge, ObstacleRenderSlot } from './obstacle/obstacle-motion.types';
+export {
+  resolveObstacleCollisionEffect,
+  type ObstacleCollisionEffect,
+} from './obstacle/obstacle-effect.resolver';
 
 export type { CollisionSystemContract } from './collision/collision.contract';
 export {
@@ -37,6 +41,17 @@ export type { CoinRenderBridge, CoinRenderSlot } from './coin/coin-motion.types'
 export type { ShieldSystemContract } from './shield/shield.contract';
 export { ShieldSystem, createShieldCollisionProbes } from './shield/ShieldSystem';
 export type { ShieldRenderBridge, ShieldRenderSlot } from './shield/shield-motion.types';
+
+export type { SpeedBoostSystemContract } from './speed-boost/speed-boost.contract';
+export {
+  SpeedBoostSystem,
+  createSpeedBoostCollisionProbes,
+} from './speed-boost/SpeedBoostSystem';
+export { SpeedBoostRuntime } from './speed-boost/SpeedBoostRuntime';
+export type {
+  SpeedBoostRenderBridge,
+  SpeedBoostRenderSlot,
+} from './speed-boost/speed-boost-motion.types';
 
 export type { AudioManagerContract } from './audio/audio.contract';
 export { AudioManager } from './audio/AudioManager';

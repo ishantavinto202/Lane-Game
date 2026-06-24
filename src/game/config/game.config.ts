@@ -12,7 +12,11 @@ export const GAME_CONFIG = {
 
 /** Score conversion and HUD throttling. */
 export const SCORE_CONFIG = {
-  pointsPerMeter: 1,
+  /** Points awarded each interval while actively playing. */
+  pointsPerInterval: 5,
+  pointsIntervalMs: 1000,
+  /** Virtual scroll speed used to derive persisted run distance from survival time. */
+  equivalentScrollSpeedPxPerSec: 320,
   metersPerPixel: 0.01,
   displayDecimals: 0,
   hudUpdateIntervalMs: 100,
@@ -81,6 +85,20 @@ export const HEALTH_CONFIG = {
   carBlinkCycleMs: 160,
 } as const;
 
+/** Pre-run countdown before gameplay begins (Phase 5.1). */
+export const COUNTDOWN_CONFIG = {
+  stepDurationMs: 1000,
+  goHoldMs: 600,
+} as const;
+
+/** Obstacle collision personalities (Phase 5.4). */
+export const OBSTACLE_PERSONALITY_CONFIG = {
+  puddleScorePenalty: 25,
+  effectHoldMs: 1100,
+  effectFadeMs: 400,
+  effectFloatPx: 32,
+} as const;
+
 /** Coin spawn, collection, and pooling (Phase 4.2). */
 export const COIN_CONFIG = {
   size: 38,
@@ -95,7 +113,14 @@ export const COIN_CONFIG = {
   spawnYRetryOffsetsPx: [0, -40, -80, -120] as const,
   hitboxScale: 0.88,
   minCollectionOverlapArea: 41,
-  collectEffectDurationMs: 220,
+  /** Full-opacity hold before fade-out (Phase 5.3 UI). */
+  collectEffectHoldMs: 1100,
+  /** Fade-out duration after hold. */
+  collectEffectFadeMs: 400,
+  /** Upward drift distance in px over the full effect. */
+  collectEffectFloatPx: 32,
+  /** Score awarded immediately on pickup (Phase 5.3). */
+  scoreReward: 20,
 } as const;
 
 /** Shield pickup spawn, collection, and pooling (Phase 4.3A). */
@@ -112,4 +137,21 @@ export const SHIELD_CONFIG = {
   minCollectionOverlapArea: 45,
   breakEffectDurationMs: 240,
   bubblePaddingPx: 24,
+} as const;
+
+/** Speed boost pickup spawn, collection, and active boost tuning (Phase 5.5). */
+export const SPEED_BOOST_CONFIG = {
+  size: 44,
+  maxActivePickups: POOL_CONSTANTS.MAX_SPEED_BOOSTS,
+  initialDelayMs: 8000,
+  minSpawnIntervalMs: 12000,
+  maxSpawnIntervalMs: 22000,
+  minVerticalGapPx: 220,
+  obstacleSafetyMarginPx: 25,
+  spawnYRetryOffsetsPx: [0, -40, -80, -120] as const,
+  hitboxScale: 0.88,
+  minCollectionOverlapArea: 45,
+  durationMs: 3000,
+  speedMultiplier: 2,
+  scoreRateMultiplier: 2,
 } as const;

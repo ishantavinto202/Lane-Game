@@ -1,7 +1,8 @@
 import { memo, useMemo } from 'react';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SHIELD_IMAGE_SOURCE } from '@/src/game/assets/definitions/shield.assets';
 import { HEALTH_CONFIG } from '@/src/game/config';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import { GameStatus } from '@/src/game/types';
@@ -13,7 +14,6 @@ function HealthHudComponent() {
   const insets = useSafeAreaInsets();
   const status = useGameStore(gameStoreSelectors.status);
   const health = useGameStore(gameStoreSelectors.health);
-  const runCoins = useGameStore(gameStoreSelectors.runCoins);
   const shieldActive = useGameStore(gameStoreSelectors.shieldActive);
 
   const isVisible = status !== GameStatus.GameOver;
@@ -28,8 +28,7 @@ function HealthHudComponent() {
     return hearts.join(' ');
   }, [health]);
 
-  const coinLabel = useMemo(() => `🪙 ${runCoins}`, [runCoins]);
-  const shieldLabel = useMemo(() => (shieldActive ? '🛡️' : null), [shieldActive]);
+  const showShieldIcon = shieldActive;
 
   const containerStyle = useMemo<ViewStyle>(
     () => ({
@@ -46,8 +45,9 @@ function HealthHudComponent() {
     <View pointerEvents="none" style={[styles.layer, containerStyle]}>
       <View style={styles.badge}>
         <Text style={styles.hearts}>{heartsLabel}</Text>
-        {shieldLabel ? <Text style={styles.shield}>{shieldLabel}</Text> : null}
-        <Text style={styles.coins}>{coinLabel}</Text>
+        {showShieldIcon ? (
+          <Image source={SHIELD_IMAGE_SOURCE} style={styles.shieldIcon} resizeMode="contain" />
+        ) : null}
       </View>
     </View>
   );
@@ -77,15 +77,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 4,
   },
-  shield: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  coins: {
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: '700',
-    color: '#FFD700',
+  shieldIcon: {
+    width: 24,
+    height: 24,
   },
 });
 

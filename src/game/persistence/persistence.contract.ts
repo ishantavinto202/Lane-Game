@@ -6,8 +6,5 @@ export interface PersistenceContract {
   readonly savePlayerStats: (stats: PersistedPlayerStats) => Promise<void>;
   readonly updateBestScore: (score: number) => Promise<PersistedPlayerStats>;
   readonly incrementRunCount: () => Promise<PersistedPlayerStats>;
-  readonly persistRunEnd: (
-    snapshot: ScoreSnapshot,
-    runCoins: number,
-  ) => Promise<PersistedPlayerStats>;
+  readonly persistRunEnd: (snapshot: ScoreSnapshot) => Promise<PersistedPlayerStats>;
 }

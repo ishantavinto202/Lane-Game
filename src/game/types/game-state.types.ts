@@ -1,6 +1,7 @@
 /** Game lifecycle status managed by Zustand. */
 export enum GameStatus {
   Ready = 'ready',
+  Countdown = 'countdown',
   Playing = 'playing',
   Paused = 'paused',
   GameOver = 'game-over',

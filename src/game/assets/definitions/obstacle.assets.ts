@@ -101,6 +101,37 @@ export const OBSTACLE_CRATE_ASSET: ObstacleAssetDefinition = {
   },
 } as const;
 
+/** Puddle — 72x72 circular lane hazard, same spawn rules as Tire. */
+export const OBSTACLE_PUDDLE_ASSET: ObstacleAssetDefinition = {
+  id: 'OBSTACLE_PUDDLE',
+  width: 72,
+  height: 72,
+  anchor: 'center',
+  layer: RenderLayer.Obstacle,
+  collidable: true,
+  collisionBox: {
+    offsetX: -27,
+    offsetY: -27,
+    width: 54,
+    height: 54,
+  },
+  visual: {
+    kind: 'shape',
+    primaryColor: '#FF3B30',
+    secondaryColor: '#CC2E26',
+    borderColor: '#B32822',
+    borderWidth: 2,
+    cornerRadius: 36,
+    label: 'PUDDLE',
+  },
+  spawnRule: {
+    ...BASE_OBSTACLE_SPAWN,
+    weight: 30,
+    minSpawnDistance: 200,
+    regions: ['any-lane'],
+  },
+} as const;
+
 /** Barrier — temporary high-contrast styling for runtime visibility confirmation. */
 export const OBSTACLE_BARRIER_ASSET: ObstacleAssetDefinition = {
   id: 'OBSTACLE_BARRIER',
@@ -138,6 +169,7 @@ export const OBSTACLE_ASSETS = [
   OBSTACLE_CONE_ASSET,
   OBSTACLE_CRATE_ASSET,
   OBSTACLE_BARRIER_ASSET,
+  OBSTACLE_PUDDLE_ASSET,
 ] as const;
 
 export const OBSTACLE_ASSET_MAP = {
@@ -145,4 +177,5 @@ export const OBSTACLE_ASSET_MAP = {
   OBSTACLE_CONE: OBSTACLE_CONE_ASSET,
   OBSTACLE_CRATE: OBSTACLE_CRATE_ASSET,
   OBSTACLE_BARRIER: OBSTACLE_BARRIER_ASSET,
+  OBSTACLE_PUDDLE: OBSTACLE_PUDDLE_ASSET,
 } as const;

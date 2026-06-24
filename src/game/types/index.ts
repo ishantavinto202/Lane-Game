@@ -37,6 +37,7 @@ export type {
   ObstacleEntity,
   PlayerEntity,
   ShieldEntity,
+  SpeedBoostEntity,
 } from './entity.types';
 
 export type {

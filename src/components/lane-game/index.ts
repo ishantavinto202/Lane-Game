@@ -8,6 +8,7 @@ export { ShieldLayer } from './layers/ShieldLayer';
 export { ControlsLayer } from './layers/ControlsLayer';
 export { ControlButton } from './controls/ControlButton';
 export { PauseButton } from './controls/PauseButton';
+export { CountdownOverlay } from './overlays/CountdownOverlay';
 export { GameOverOverlay } from './overlays/GameOverOverlay';
 export { PauseOverlay } from './overlays/PauseOverlay';
 export { CollisionFlashOverlay } from './overlays/CollisionFlashOverlay';

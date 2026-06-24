@@ -1,11 +1,11 @@
 import type { SharedValue } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { ENGINE_CONFIG, GAME_CONFIG, HEALTH_CONFIG, SCORE_CONFIG } from '../config';
+import { ENGINE_CONFIG, GAME_CONFIG, HEALTH_CONFIG, SCORE_CONFIG, COIN_CONFIG } from '../config';
 import { playerStatsPersistence } from '../persistence/player-stats.persistence';
 import { useGameStore } from '../store';
 import type { AudioManagerContract } from '../systems/audio/audio.contract';
-import type { CollisionEvent } from '../types';
+import type { CollisionEvent, ObstacleEntity } from '../types';
 import type { GameLayout, LaneDirection } from '../types';
 import { GameStatus } from '../types';
 import { evaluateDifficulty } from '../utils/difficulty';
@@ -24,6 +24,7 @@ import {
 } from '../systems/player/PlayerMotionController';
 import { PlayerSystem, type PlayerSnapshot } from '../systems/player/PlayerSystem';
 import { ObstacleSystem } from '../systems/obstacle/ObstacleSystem';
+import { resolveObstacleCollisionEffect } from '../systems/obstacle/obstacle-effect.resolver';
 import type { ObstacleRenderBridge } from '../systems/obstacle/obstacle-motion.types';
 import {
   CoinSystem,
@@ -35,6 +36,12 @@ import {
   createShieldCollisionProbes,
 } from '../systems/shield/ShieldSystem';
 import type { ShieldRenderBridge } from '../systems/shield/shield-motion.types';
+import {
+  SpeedBoostSystem,
+  createSpeedBoostCollisionProbes,
+} from '../systems/speed-boost/SpeedBoostSystem';
+import { SpeedBoostRuntime } from '../systems/speed-boost/SpeedBoostRuntime';
+import type { SpeedBoostRenderBridge } from '../systems/speed-boost/speed-boost-motion.types';
 import { RoadSystem } from '../systems/road/RoadSystem';
 import { ScoreSystem } from '../systems/score/ScoreSystem';
 
@@ -47,10 +54,11 @@ export interface GameEngineOptions {
   readonly obstacleRenderBridge: ObstacleRenderBridge;
   readonly coinRenderBridge: CoinRenderBridge;
   readonly shieldRenderBridge: ShieldRenderBridge;
+  readonly speedBoostRenderBridge: SpeedBoostRenderBridge;
   readonly audioManager: AudioManagerContract;
 }
 
-/** Central orchestrator — Phase 4.3A: shield power-up. */
+/** Central orchestrator — Phase 5.5: speed boost power-up. */
 export class GameEngine {
   readonly laneSystem = new LaneSystem();
   readonly roadSystem: RoadSystem;
@@ -58,6 +66,8 @@ export class GameEngine {
   readonly obstacleSystem: ObstacleSystem;
   readonly coinSystem: CoinSystem;
   readonly shieldSystem: ShieldSystem;
+  readonly speedBoostSystem: SpeedBoostSystem;
+  readonly speedBoostRuntime = new SpeedBoostRuntime();
   readonly collisionSystem = new CollisionSystem();
   readonly scoreSystem = new ScoreSystem();
   readonly healthSystem = new HealthSystem();
@@ -73,7 +83,6 @@ export class GameEngine {
   private elapsedMs = 0;
   private lastScoreHudUpdateMs = 0;
   private gameOverTriggered = false;
-  private runCoins = 0;
 
   constructor(options: GameEngineOptions) {
     this.audioManager = options.audioManager;
@@ -81,6 +90,7 @@ export class GameEngine {
     this.obstacleSystem = new ObstacleSystem(options.obstacleRenderBridge);
     this.coinSystem = new CoinSystem(options.coinRenderBridge);
     this.shieldSystem = new ShieldSystem(options.shieldRenderBridge);
+    this.speedBoostSystem = new SpeedBoostSystem(options.speedBoostRenderBridge);
     this.motionController = new PlayerMotionController(options.playerMotion);
     this.inputManager = new InputManager({
       playerSystem: this.playerSystem,
@@ -99,6 +109,7 @@ export class GameEngine {
     this.obstacleSystem.initialize(layout, this.laneSystem);
     this.coinSystem.initialize(layout, this.laneSystem);
     this.shieldSystem.initialize(layout, this.laneSystem);
+    this.speedBoostSystem.initialize(layout, this.laneSystem);
     this.inputManager.initialize(layout);
     this.roadSystem.setSpeed(ENGINE_CONFIG.baseScrollSpeedPxPerSec);
     this.roadSystem.reset();
@@ -106,6 +117,8 @@ export class GameEngine {
     this.obstacleSystem.reset();
     this.coinSystem.reset();
     this.shieldSystem.reset();
+    this.speedBoostSystem.reset();
+    this.speedBoostRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
@@ -113,10 +126,9 @@ export class GameEngine {
     this.elapsedMs = 0;
     this.lastScoreHudUpdateMs = 0;
     this.gameOverTriggered = false;
-    this.runCoins = 0;
     useGameStore.getState().setHealth(HEALTH_CONFIG.maxHealth);
-    useGameStore.getState().setRunCoins(0);
     useGameStore.getState().clearShieldState();
+    useGameStore.getState().clearSpeedBoostState();
   }
 
   getLayout(): GameLayout | null {
@@ -161,13 +173,14 @@ export class GameEngine {
     this.obstacleSystem.reset();
     this.coinSystem.reset();
     this.shieldSystem.reset();
+    this.speedBoostSystem.reset();
+    this.speedBoostRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
     this.gameOverTriggered = false;
     this.elapsedMs = 0;
     this.lastScoreHudUpdateMs = 0;
-    this.runCoins = 0;
 
     if (this.layout) {
       this.motionController.reset(this.layout, this.playerSystem.getLane());
@@ -179,8 +192,8 @@ export class GameEngine {
       distanceTraveled: 0,
     });
     useGameStore.getState().setHealth(HEALTH_CONFIG.maxHealth);
-    useGameStore.getState().setRunCoins(0);
     useGameStore.getState().clearShieldState();
+    useGameStore.getState().clearSpeedBoostState();
   }
 
   dispose(): void {
@@ -189,6 +202,7 @@ export class GameEngine {
     this.obstacleSystem.dispose();
     this.coinSystem.dispose();
     this.shieldSystem.dispose();
+    this.speedBoostSystem.dispose();
     this.collisionSystem.reset();
     this.healthSystem.reset();
     this.motionController.dispose();
@@ -206,7 +220,6 @@ export class GameEngine {
       totalRuns: stats.totalRuns,
       totalDistance: stats.totalDistance,
     });
-    useGameStore.getState().setLifetimeCoins(stats.lifetimeCoins);
   }
 
   private tick = (timestamp: number): void => {
@@ -227,25 +240,35 @@ export class GameEngine {
 
     this.elapsedMs += deltaMs;
     this.healthSystem.update(deltaMs);
-    const difficulty = evaluateDifficulty(this.elapsedMs);
-    this.roadSystem.setSpeed(difficulty.speedPxPerSec);
+    this.speedBoostRuntime.update(deltaMs);
 
+    const difficulty = evaluateDifficulty(this.elapsedMs);
+    const effectiveSpeed = difficulty.speedPxPerSec * this.speedBoostRuntime.getSpeedMultiplier();
+    const scoreRateMultiplier = this.speedBoostRuntime.getScoreRateMultiplier();
+
+    this.roadSystem.setSpeed(effectiveSpeed);
     this.roadSystem.updateScroll(deltaMs);
 
-    const scrollDeltaPx = (difficulty.speedPxPerSec * deltaMs) / 1000;
     const activeCoinsBeforeObstacles = this.coinSystem.getActiveCoins();
     const activeShields = this.shieldSystem.getActiveShields();
     const obstacles = this.obstacleSystem.updateObstacles(
       deltaMs,
-      difficulty.speedPxPerSec,
+      effectiveSpeed,
       activeCoinsBeforeObstacles,
       activeShields,
     );
-    this.coinSystem.updateCoins(deltaMs, difficulty.speedPxPerSec, obstacles, activeShields);
+    this.coinSystem.updateCoins(deltaMs, effectiveSpeed, obstacles, activeShields);
     const activeCoins = this.coinSystem.getActiveCoins();
-    this.shieldSystem.updateShields(deltaMs, difficulty.speedPxPerSec, obstacles, activeCoins);
-    const scoreSnapshot = this.scoreSystem.addDistance(scrollDeltaPx, difficulty);
-    this.publishScoreIfDue(scoreSnapshot, deltaMs);
+    this.shieldSystem.updateShields(deltaMs, effectiveSpeed, obstacles, activeCoins);
+    this.speedBoostSystem.updateSpeedBoosts(
+      deltaMs,
+      effectiveSpeed,
+      obstacles,
+      activeCoins,
+      activeShields,
+    );
+    const scoreSnapshot = this.scoreSystem.addSurvivalTime(deltaMs, scoreRateMultiplier);
+    this.publishHudIfDue(scoreSnapshot, deltaMs);
 
     const playerLane = this.playerSystem.getLane();
     const playerX = this.laneSystem.getCenterX(playerLane);
@@ -258,6 +281,7 @@ export class GameEngine {
 
     this.evaluateCoinCollection(playerProbe);
     this.evaluateShieldCollection(playerProbe);
+    this.evaluateSpeedBoostCollection(playerProbe);
 
     if (!this.gameOverTriggered && !this.healthSystem.isInvulnerable()) {
       const obstacleProbes = createObstacleCollisionProbes(obstacles);
@@ -275,7 +299,7 @@ export class GameEngine {
     this.rafId = requestAnimationFrame(this.tick);
   };
 
-  private publishScoreIfDue(
+  private publishHudIfDue(
     snapshot: ReturnType<ScoreSystem['getSnapshot']>,
     deltaMs: number,
   ): void {
@@ -287,6 +311,10 @@ export class GameEngine {
 
     this.lastScoreHudUpdateMs = 0;
     useGameStore.getState().setScoreSnapshot(snapshot);
+    useGameStore.getState().setSpeedBoostState(
+      this.speedBoostRuntime.isActive(),
+      this.speedBoostRuntime.getRemainingRatio(),
+    );
   }
 
   private handleShieldAbsorb(collision: CollisionEvent): void {
@@ -307,7 +335,39 @@ export class GameEngine {
       return;
     }
 
+    const obstacle = this.findActiveObstacle(collision.obstacleId);
+    if (!obstacle) {
+      return;
+    }
+
+    const effect = resolveObstacleCollisionEffect(obstacle.assetId);
     this.obstacleSystem.removeObstacleById(collision.obstacleId);
+
+    if (effect.kind === 'score-penalty') {
+      this.applyObstacleScorePenalty(obstacle, effect.amount);
+      return;
+    }
+
+    this.applyObstacleHealthDamage();
+  }
+
+  private findActiveObstacle(obstacleId: string): ObstacleEntity | null {
+    return (
+      this.obstacleSystem.getActiveObstacles().find((entry) => entry.id === obstacleId) ?? null
+    );
+  }
+
+  private applyObstacleScorePenalty(obstacle: ObstacleEntity, amount: number): void {
+    const scoreSnapshot = this.scoreSystem.applyScorePenalty(amount);
+    useGameStore.getState().setScoreSnapshot(scoreSnapshot);
+    useGameStore.getState().triggerObstacleEffectFloater(obstacle.x, obstacle.y, `-${amount}`);
+
+    if (GAME_CONFIG.enableHaptics) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }
+
+  private applyObstacleHealthDamage(): void {
     const healthSnapshot = this.healthSystem.takeDamage();
 
     useGameStore.getState().setHealth(healthSnapshot.current);
@@ -340,6 +400,8 @@ export class GameEngine {
     useGameStore.setState({
       status: GameStatus.GameOver,
       scoreSnapshot: finalSnapshot,
+      speedBoostActive: false,
+      speedBoostRemainingRatio: 0,
     });
 
     this.audioManager.playGameOver();
@@ -351,12 +413,11 @@ export class GameEngine {
     }
 
     if (SCORE_CONFIG.persistBestScoreImmediately) {
-      void playerStatsPersistence.persistRunEnd(finalSnapshot, this.runCoins).then((stats) => {
+      void playerStatsPersistence.persistRunEnd(finalSnapshot).then((stats) => {
         useGameStore.getState().setRunStats({
           totalRuns: stats.totalRuns,
           totalDistance: stats.totalDistance,
         });
-        useGameStore.getState().setLifetimeCoins(stats.lifetimeCoins);
       });
     }
   }
@@ -378,8 +439,8 @@ export class GameEngine {
         continue;
       }
 
-      this.runCoins += 1;
-      useGameStore.getState().setRunCoins(this.runCoins);
+      const scoreSnapshot = this.scoreSystem.addPickupBonus(COIN_CONFIG.scoreReward);
+      useGameStore.getState().setScoreSnapshot(scoreSnapshot);
       useGameStore.getState().triggerCoinCollect(position.x, position.y);
 
       if (GAME_CONFIG.enableHaptics) {
@@ -413,6 +474,35 @@ export class GameEngine {
 
       if (GAME_CONFIG.enableHaptics) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+  }
+
+  private evaluateSpeedBoostCollection(
+    playerProbe: ReturnType<typeof createPlayerCollisionProbe>,
+  ): void {
+    const activeSpeedBoosts = this.speedBoostSystem.getActiveSpeedBoosts();
+    const speedBoostProbes = createSpeedBoostCollisionProbes(activeSpeedBoosts);
+    const collectedIds = this.speedBoostSystem.evaluateCollection(
+      playerProbe,
+      speedBoostProbes,
+    );
+
+    if (collectedIds.length === 0) {
+      return;
+    }
+
+    for (const speedBoostId of collectedIds) {
+      const removed = this.speedBoostSystem.removeSpeedBoostById(speedBoostId);
+      if (!removed) {
+        continue;
+      }
+
+      this.speedBoostRuntime.activate();
+      useGameStore.getState().setSpeedBoostState(true, 1);
+
+      if (GAME_CONFIG.enableHaptics) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
     }
   }

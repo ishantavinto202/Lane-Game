@@ -7,12 +7,16 @@ import { ROAD_COLORS } from '@/src/game/config';
 import { ControlsLayer } from '../layers/ControlsLayer';
 import { CoinLayer } from '../layers/CoinLayer';
 import { ShieldLayer } from '../layers/ShieldLayer';
+import { SpeedBoostLayer } from '../layers/SpeedBoostLayer';
 import { ObstacleLayer } from '../layers/ObstacleLayer';
 import { PlayerLayer } from '../layers/PlayerLayer';
 import { RoadLayer } from '../layers/RoadLayer';
 import { UiLayer } from '../layers/UiLayer';
+import { SpeedBoostHud } from '../ui/SpeedBoostHud';
 import { HealthHud } from '../ui/HealthHud';
 import { PauseButton } from '../controls/PauseButton';
+import { ObstacleEffectFloaters } from '../obstacle/ObstacleEffectFloaters';
+import { CountdownOverlay } from '../overlays/CountdownOverlay';
 import { CollisionFlashOverlay } from '../overlays/CollisionFlashOverlay';
 import { GameOverOverlay } from '../overlays/GameOverOverlay';
 import { PauseOverlay } from '../overlays/PauseOverlay';
@@ -31,6 +35,8 @@ function GameScreenComponent() {
     coinPoolRevision,
     shieldRenderBridge,
     shieldPoolRevision,
+    speedBoostRenderBridge,
+    speedBoostPoolRevision,
   } = useGameEngine(layout);
 
   const rootStyle = useMemo<ViewStyle>(
@@ -59,14 +65,18 @@ function GameScreenComponent() {
         <RoadLayer layout={layout} scrollY={scrollY} />
         <CoinLayer renderBridge={coinRenderBridge} poolRevision={coinPoolRevision} />
         <ShieldLayer renderBridge={shieldRenderBridge} poolRevision={shieldPoolRevision} />
+        <SpeedBoostLayer renderBridge={speedBoostRenderBridge} poolRevision={speedBoostPoolRevision} />
         <ObstacleLayer renderBridge={obstacleRenderBridge} poolRevision={obstaclePoolRevision} />
         <PlayerLayer motion={playerMotion} snapshot={playerSnapshot} />
         <ControlsLayer inputManagerRef={inputManagerRef} />
       </View>
       <UiLayer />
       <HealthHud />
+      <SpeedBoostHud />
       <PauseButton />
       <PauseOverlay />
+      <CountdownOverlay />
+      <ObstacleEffectFloaters />
       <CollisionFlashOverlay />
       <GameOverOverlay />
     </View>

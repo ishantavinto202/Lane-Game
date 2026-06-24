@@ -1,7 +1,10 @@
 import { RenderLayer } from '../../types';
 import type { AssetDefinition } from '../../types';
 
-/** Collectible shield pickup — 44×44 blue energy orb. */
+/** Source bitmap — Shield voxel artwork, rendered at SHIELD_CONFIG.size (44×44). */
+export const SHIELD_IMAGE_SOURCE = require('../../../../assets/voxel/Shield Asset.png');
+
+/** Collectible shield pickup — 44×44 display size with voxel artwork. */
 export const SHIELD_ASSET: AssetDefinition = {
   id: 'SHIELD',
   width: 44,

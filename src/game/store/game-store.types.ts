@@ -3,25 +3,36 @@ import type { RunStatistics, ScoreSnapshot } from '../types';
 import { EMPTY_PERSISTED_STATS, EMPTY_RUN_STATISTICS } from '../types';
 import { HEALTH_CONFIG } from '../config';
 
-/** Coin collection burst position for render effect. */
-export interface CoinCollectEffect {
+/** Independent floating score label spawned on coin pickup. */
+export interface CoinScoreFloaterInstance {
+  readonly id: number;
   readonly x: number;
   readonly y: number;
-  readonly nonce: number;
 }
 
-/** Zustand store shape — Phase 4.2: coins + lifecycle. Phase 4.3A: shield. */
+/** Independent floating label spawned on obstacle personality effect. */
+export interface ObstacleEffectFloaterInstance {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
+}
+
+/** Zustand store shape — Phase 4.2: coin pickups + lifecycle. Phase 4.3A: shield. */
 export interface GameStoreState {
   readonly status: GameStatus;
   readonly resetNonce: number;
   readonly collisionFlashNonce: number;
   readonly damageBlinkNonce: number;
   readonly health: number;
-  readonly runCoins: number;
-  readonly lifetimeCoins: number;
-  readonly coinCollectEffect: CoinCollectEffect;
+  readonly coinScoreFloaters: readonly CoinScoreFloaterInstance[];
+  readonly nextCoinScoreFloaterId: number;
+  readonly obstacleEffectFloaters: readonly ObstacleEffectFloaterInstance[];
+  readonly nextObstacleEffectFloaterId: number;
   readonly shieldActive: boolean;
   readonly shieldBreakNonce: number;
+  readonly speedBoostActive: boolean;
+  readonly speedBoostRemainingRatio: number;
   readonly scoreSnapshot: ScoreSnapshot;
   readonly runStats: RunStatistics;
 }
@@ -36,12 +47,15 @@ export interface GameStoreActions {
   readonly setScoreSnapshot: (snapshot: ScoreSnapshot) => void;
   readonly setRunStats: (runStats: RunStatistics) => void;
   readonly setHealth: (health: number) => void;
-  readonly setRunCoins: (runCoins: number) => void;
-  readonly setLifetimeCoins: (lifetimeCoins: number) => void;
   readonly triggerCoinCollect: (x: number, y: number) => void;
+  readonly dismissCoinScoreFloater: (id: number) => void;
+  readonly triggerObstacleEffectFloater: (x: number, y: number, label: string) => void;
+  readonly dismissObstacleEffectFloater: (id: number) => void;
   readonly setShieldActive: (shieldActive: boolean) => void;
   readonly triggerShieldBreak: () => void;
   readonly clearShieldState: () => void;
+  readonly setSpeedBoostState: (active: boolean, remainingRatio: number) => void;
+  readonly clearSpeedBoostState: () => void;
   readonly triggerCollisionFlash: () => void;
   readonly triggerDamageBlink: () => void;
   readonly triggerGameOver: () => void;
@@ -58,9 +72,3 @@ export const INITIAL_SCORE_SNAPSHOT: ScoreSnapshot = {
 export const INITIAL_RUN_STATS: RunStatistics = EMPTY_RUN_STATISTICS;
 
 export const INITIAL_HEALTH = HEALTH_CONFIG.maxHealth;
-
-export const INITIAL_COIN_COLLECT_EFFECT: CoinCollectEffect = {
-  x: 0,
-  y: 0,
-  nonce: 0,
-};
