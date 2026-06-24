@@ -30,6 +30,11 @@ import {
   createCoinCollisionProbes,
 } from '../systems/coin/CoinSystem';
 import type { CoinRenderBridge } from '../systems/coin/coin-motion.types';
+import {
+  ShieldSystem,
+  createShieldCollisionProbes,
+} from '../systems/shield/ShieldSystem';
+import type { ShieldRenderBridge } from '../systems/shield/shield-motion.types';
 import { RoadSystem } from '../systems/road/RoadSystem';
 import { ScoreSystem } from '../systems/score/ScoreSystem';
 
@@ -41,16 +46,18 @@ export interface GameEngineOptions {
   readonly playerMotion: PlayerMotionSharedValues;
   readonly obstacleRenderBridge: ObstacleRenderBridge;
   readonly coinRenderBridge: CoinRenderBridge;
+  readonly shieldRenderBridge: ShieldRenderBridge;
   readonly audioManager: AudioManagerContract;
 }
 
-/** Central orchestrator — Phase 4.2: coins + collection. */
+/** Central orchestrator — Phase 4.3A: shield power-up. */
 export class GameEngine {
   readonly laneSystem = new LaneSystem();
   readonly roadSystem: RoadSystem;
   readonly playerSystem = new PlayerSystem();
   readonly obstacleSystem: ObstacleSystem;
   readonly coinSystem: CoinSystem;
+  readonly shieldSystem: ShieldSystem;
   readonly collisionSystem = new CollisionSystem();
   readonly scoreSystem = new ScoreSystem();
   readonly healthSystem = new HealthSystem();
@@ -73,6 +80,7 @@ export class GameEngine {
     this.roadSystem = new RoadSystem({ scrollY: options.scrollY });
     this.obstacleSystem = new ObstacleSystem(options.obstacleRenderBridge);
     this.coinSystem = new CoinSystem(options.coinRenderBridge);
+    this.shieldSystem = new ShieldSystem(options.shieldRenderBridge);
     this.motionController = new PlayerMotionController(options.playerMotion);
     this.inputManager = new InputManager({
       playerSystem: this.playerSystem,
@@ -90,12 +98,14 @@ export class GameEngine {
     this.playerSystem.initialize(layout, this.laneSystem);
     this.obstacleSystem.initialize(layout, this.laneSystem);
     this.coinSystem.initialize(layout, this.laneSystem);
+    this.shieldSystem.initialize(layout, this.laneSystem);
     this.inputManager.initialize(layout);
     this.roadSystem.setSpeed(ENGINE_CONFIG.baseScrollSpeedPxPerSec);
     this.roadSystem.reset();
     this.playerSystem.reset();
     this.obstacleSystem.reset();
     this.coinSystem.reset();
+    this.shieldSystem.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
@@ -106,6 +116,7 @@ export class GameEngine {
     this.runCoins = 0;
     useGameStore.getState().setHealth(HEALTH_CONFIG.maxHealth);
     useGameStore.getState().setRunCoins(0);
+    useGameStore.getState().clearShieldState();
   }
 
   getLayout(): GameLayout | null {
@@ -149,6 +160,7 @@ export class GameEngine {
     this.inputBridge.reset();
     this.obstacleSystem.reset();
     this.coinSystem.reset();
+    this.shieldSystem.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
@@ -168,6 +180,7 @@ export class GameEngine {
     });
     useGameStore.getState().setHealth(HEALTH_CONFIG.maxHealth);
     useGameStore.getState().setRunCoins(0);
+    useGameStore.getState().clearShieldState();
   }
 
   dispose(): void {
@@ -175,6 +188,7 @@ export class GameEngine {
     this.roadSystem.dispose();
     this.obstacleSystem.dispose();
     this.coinSystem.dispose();
+    this.shieldSystem.dispose();
     this.collisionSystem.reset();
     this.healthSystem.reset();
     this.motionController.dispose();
@@ -219,8 +233,17 @@ export class GameEngine {
     this.roadSystem.updateScroll(deltaMs);
 
     const scrollDeltaPx = (difficulty.speedPxPerSec * deltaMs) / 1000;
-    const obstacles = this.obstacleSystem.updateObstacles(deltaMs, difficulty.speedPxPerSec);
-    this.coinSystem.updateCoins(deltaMs, difficulty.speedPxPerSec, obstacles);
+    const activeCoinsBeforeObstacles = this.coinSystem.getActiveCoins();
+    const activeShields = this.shieldSystem.getActiveShields();
+    const obstacles = this.obstacleSystem.updateObstacles(
+      deltaMs,
+      difficulty.speedPxPerSec,
+      activeCoinsBeforeObstacles,
+      activeShields,
+    );
+    this.coinSystem.updateCoins(deltaMs, difficulty.speedPxPerSec, obstacles, activeShields);
+    const activeCoins = this.coinSystem.getActiveCoins();
+    this.shieldSystem.updateShields(deltaMs, difficulty.speedPxPerSec, obstacles, activeCoins);
     const scoreSnapshot = this.scoreSystem.addDistance(scrollDeltaPx, difficulty);
     this.publishScoreIfDue(scoreSnapshot, deltaMs);
 
@@ -234,13 +257,18 @@ export class GameEngine {
     );
 
     this.evaluateCoinCollection(playerProbe);
+    this.evaluateShieldCollection(playerProbe);
 
     if (!this.gameOverTriggered && !this.healthSystem.isInvulnerable()) {
       const obstacleProbes = createObstacleCollisionProbes(obstacles);
       const collision = this.collisionSystem.evaluate(playerProbe, obstacleProbes);
 
       if (collision) {
-        this.handleObstacleHit(collision);
+        if (useGameStore.getState().shieldActive) {
+          this.handleShieldAbsorb(collision);
+        } else {
+          this.handleObstacleHit(collision);
+        }
       }
     }
 
@@ -259,6 +287,19 @@ export class GameEngine {
 
     this.lastScoreHudUpdateMs = 0;
     useGameStore.getState().setScoreSnapshot(snapshot);
+  }
+
+  private handleShieldAbsorb(collision: CollisionEvent): void {
+    if (this.gameOverTriggered || !useGameStore.getState().shieldActive) {
+      return;
+    }
+
+    this.obstacleSystem.removeObstacleById(collision.obstacleId);
+    useGameStore.getState().triggerShieldBreak();
+
+    if (GAME_CONFIG.enableHaptics) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
   }
 
   private handleObstacleHit(collision: CollisionEvent): void {
@@ -340,6 +381,35 @@ export class GameEngine {
       this.runCoins += 1;
       useGameStore.getState().setRunCoins(this.runCoins);
       useGameStore.getState().triggerCoinCollect(position.x, position.y);
+
+      if (GAME_CONFIG.enableHaptics) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+  }
+
+  private evaluateShieldCollection(
+    playerProbe: ReturnType<typeof createPlayerCollisionProbe>,
+  ): void {
+    if (useGameStore.getState().shieldActive) {
+      return;
+    }
+
+    const activeShields = this.shieldSystem.getActiveShields();
+    const shieldProbes = createShieldCollisionProbes(activeShields);
+    const collectedIds = this.shieldSystem.evaluateCollection(playerProbe, shieldProbes);
+
+    if (collectedIds.length === 0) {
+      return;
+    }
+
+    for (const shieldId of collectedIds) {
+      const position = this.shieldSystem.removeShieldById(shieldId);
+      if (!position) {
+        continue;
+      }
+
+      useGameStore.getState().setShieldActive(true);
 
       if (GAME_CONFIG.enableHaptics) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

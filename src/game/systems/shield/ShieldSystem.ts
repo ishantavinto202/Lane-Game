@@ -1,22 +1,19 @@
-import { COIN_ASSET } from '../../assets/definitions/coin.assets';
-import { COIN_CONFIG } from '../../config';
+import { SHIELD_ASSET } from '../../assets/definitions/shield.assets';
+import { SHIELD_CONFIG } from '../../config';
 import type { CoinEntity, LaneIndex, ObstacleEntity, ShieldEntity } from '../../types';
 import type { CollisionProbe } from '../../types';
-import { computeWorldBounds, boundsOverlap } from '../../utils/collision-bounds';
+import { boundsOverlap, computeWorldBounds } from '../../utils/collision-bounds';
 import type { LaneSystem } from '../lane/LaneSystem';
-
-import type { CoinRenderBridge } from './coin-motion.types';
 import {
   boundsIntersect,
   computeEntityVisualBounds,
-  computeOverlapArea,
   expandWorldBounds,
   findPickupBoundsConflict,
-  logCoinSpawnRejected,
-  logCoinSpawnSkipped,
-} from './coin-spawn-debug';
+} from '../coin/coin-spawn-debug';
 
-interface MutableCoinSlot {
+import type { ShieldRenderBridge } from './shield-motion.types';
+
+interface MutableShieldSlot {
   id: string;
   active: boolean;
   lane: LaneIndex;
@@ -32,51 +29,51 @@ let nextEntityId = 0;
 
 function createEntityId(): string {
   nextEntityId += 1;
-  return `coin-${nextEntityId}`;
+  return `shield-${nextEntityId}`;
 }
 
 function randomSpawnIntervalMs(): number {
-  const { minSpawnIntervalMs, maxSpawnIntervalMs } = COIN_CONFIG;
+  const { minSpawnIntervalMs, maxSpawnIntervalMs } = SHIELD_CONFIG;
   return (
     minSpawnIntervalMs +
     Math.floor(Math.random() * (maxSpawnIntervalMs - minSpawnIntervalMs + 1))
   );
 }
 
-/** Builds collision probes for active coins. */
-export function createCoinCollisionProbes(
-  coins: readonly {
+/** Builds collision probes for active shield pickups. */
+export function createShieldCollisionProbes(
+  shields: readonly {
     readonly id: string;
     readonly lane: LaneIndex;
     readonly x: number;
     readonly y: number;
   }[],
 ): CollisionProbe[] {
-  return coins.map((coin) => ({
-    entityId: coin.id,
-    lane: coin.lane,
+  return shields.map((shield) => ({
+    entityId: shield.id,
+    lane: shield.lane,
     bounds: computeWorldBounds(
-      coin.x,
-      coin.y,
-      COIN_ASSET,
-      COIN_CONFIG.hitboxScale,
+      shield.x,
+      shield.y,
+      SHIELD_ASSET,
+      SHIELD_CONFIG.hitboxScale,
     ),
   }));
 }
 
-/** Spawns and moves lane coins with object pooling and obstacle-safe placement. */
-export class CoinSystem {
-  readonly id = 'coin-system' as const;
+/** Spawns and moves shield pickups with object pooling and obstacle-safe placement. */
+export class ShieldSystem {
+  readonly id = 'shield-system' as const;
 
   private layout: { spawnY: number; despawnY: number } | null = null;
   private laneSystem: LaneSystem | null = null;
-  private readonly renderBridge: CoinRenderBridge;
-  private readonly pool: MutableCoinSlot[] = [];
+  private readonly renderBridge: ShieldRenderBridge;
+  private readonly pool: MutableShieldSlot[] = [];
   private readonly activeIds = new Set<string>();
   private spawnAccumulatorMs = 0;
-  private nextSpawnIntervalMs: number = COIN_CONFIG.minSpawnIntervalMs;
+  private nextSpawnIntervalMs: number = SHIELD_CONFIG.minSpawnIntervalMs;
 
-  constructor(renderBridge: CoinRenderBridge) {
+  constructor(renderBridge: ShieldRenderBridge) {
     this.renderBridge = renderBridge;
   }
 
@@ -89,12 +86,12 @@ export class CoinSystem {
     this.reset();
   }
 
-  updateCoins(
+  updateShields(
     deltaMs: number,
     speedPxPerSec: number,
     activeObstacles: readonly ObstacleEntity[],
-    activeShields: readonly ShieldEntity[],
-  ): readonly CoinEntity[] {
+    activeCoins: readonly CoinEntity[],
+  ): readonly ShieldEntity[] {
     if (!this.layout || !this.laneSystem) {
       return [];
     }
@@ -104,7 +101,7 @@ export class CoinSystem {
     while (this.spawnAccumulatorMs >= this.nextSpawnIntervalMs) {
       this.spawnAccumulatorMs -= this.nextSpawnIntervalMs;
       this.nextSpawnIntervalMs = randomSpawnIntervalMs();
-      this.trySpawn(activeObstacles, activeShields, speedPxPerSec);
+      this.trySpawn(activeObstacles, activeCoins, speedPxPerSec);
     }
 
     const deltaPx = (speedPxPerSec * deltaMs) / 1000;
@@ -128,37 +125,37 @@ export class CoinSystem {
     return this.getActiveEntities();
   }
 
-  getActiveCoins(): readonly CoinEntity[] {
+  getActiveShields(): readonly ShieldEntity[] {
     return this.getActiveEntities();
   }
 
   evaluateCollection(
     playerProbe: CollisionProbe,
-    coins: readonly CollisionProbe[],
+    shields: readonly CollisionProbe[],
   ): readonly string[] {
     const collected: string[] = [];
 
-    for (const coin of coins) {
-      if (playerProbe.lane !== coin.lane) {
+    for (const shield of shields) {
+      if (playerProbe.lane !== shield.lane) {
         continue;
       }
 
       if (
         boundsOverlap(
           playerProbe.bounds,
-          coin.bounds,
-          COIN_CONFIG.minCollectionOverlapArea,
+          shield.bounds,
+          SHIELD_CONFIG.minCollectionOverlapArea,
         )
       ) {
-        collected.push(coin.entityId);
+        collected.push(shield.entityId);
       }
     }
 
     return collected;
   }
 
-  removeCoinById(coinId: string): { x: number; y: number } | null {
-    const slot = this.pool.find((entry) => entry.active && entry.id === coinId);
+  removeShieldById(shieldId: string): { x: number; y: number } | null {
+    const slot = this.pool.find((entry) => entry.active && entry.id === shieldId);
     if (!slot) {
       return null;
     }
@@ -177,7 +174,7 @@ export class CoinSystem {
 
     this.pool.length = 0;
     this.activeIds.clear();
-    this.spawnAccumulatorMs = COIN_CONFIG.initialDelayMs;
+    this.spawnAccumulatorMs = SHIELD_CONFIG.initialDelayMs;
     this.nextSpawnIntervalMs = randomSpawnIntervalMs();
 
     for (const renderSlot of this.renderBridge.slots) {
@@ -198,18 +195,18 @@ export class CoinSystem {
 
   private trySpawn(
     activeObstacles: readonly ObstacleEntity[],
-    activeShields: readonly ShieldEntity[],
+    activeCoins: readonly CoinEntity[],
     speedPxPerSec: number,
   ): void {
     if (!this.layout || !this.laneSystem) {
       return;
     }
 
-    if (this.activeIds.size >= COIN_CONFIG.maxActiveCoins) {
+    if (this.activeIds.size >= SHIELD_CONFIG.maxActivePickups) {
       return;
     }
 
-    const spawnPosition = this.pickSpawnPosition(activeObstacles, activeShields);
+    const spawnPosition = this.pickSpawnPosition(activeObstacles, activeCoins);
 
     if (spawnPosition === null) {
       return;
@@ -225,10 +222,10 @@ export class CoinSystem {
     }
 
     const x = this.laneSystem.getCenterX(lane);
-    const width = COIN_CONFIG.size;
-    const height = COIN_CONFIG.size;
+    const width = SHIELD_CONFIG.size;
+    const height = SHIELD_CONFIG.size;
 
-    const slot: MutableCoinSlot = existingSlot ?? {
+    const slot: MutableShieldSlot = existingSlot ?? {
       id: createEntityId(),
       active: false,
       lane,
@@ -261,35 +258,27 @@ export class CoinSystem {
 
   private pickSpawnPosition(
     activeObstacles: readonly ObstacleEntity[],
-    activeShields: readonly ShieldEntity[],
+    activeCoins: readonly CoinEntity[],
   ): { lane: LaneIndex; spawnY: number } | null {
     const baseSpawnY = this.layout!.spawnY;
     const shuffledLanes = shuffleLanes([0, 1, 2]);
 
-    for (const yOffset of COIN_CONFIG.spawnYRetryOffsetsPx) {
+    for (const yOffset of SHIELD_CONFIG.spawnYRetryOffsetsPx) {
       const spawnY = baseSpawnY + yOffset;
 
       for (const lane of shuffledLanes) {
-        if (!this.hasCoinVerticalGap(lane, spawnY)) {
+        if (!this.hasShieldVerticalGap(lane, spawnY)) {
           continue;
         }
 
-        const coinBounds = this.computeSpawnCoinBounds(lane, spawnY);
+        const shieldBounds = this.computeSpawnShieldBounds(lane, spawnY);
 
-        const pickupConflict = findPickupBoundsConflict(coinBounds, activeShields);
+        const pickupConflict = findPickupBoundsConflict(shieldBounds, activeCoins);
         if (pickupConflict) {
           continue;
         }
 
-        const rejection = this.findSpawnObstacleConflict(coinBounds, activeObstacles);
-        if (rejection) {
-          logCoinSpawnRejected({
-            lane,
-            coinBounds: rejection.coinBounds,
-            obstacleType: rejection.obstacleType,
-            obstacleBounds: rejection.obstacleBounds,
-            overlapAmountPx: rejection.overlapAmountPx,
-          });
+        if (this.findSpawnObstacleConflict(shieldBounds, activeObstacles)) {
           continue;
         }
 
@@ -297,18 +286,17 @@ export class CoinSystem {
       }
     }
 
-    logCoinSpawnSkipped(baseSpawnY);
     return null;
   }
 
-  private hasCoinVerticalGap(lane: LaneIndex, spawnY: number): boolean {
+  private hasShieldVerticalGap(lane: LaneIndex, spawnY: number): boolean {
     for (const slot of this.pool) {
       if (!slot.active || slot.lane !== lane) {
         continue;
       }
 
-      const gap = Math.abs(slot.y - spawnY) - (slot.height + COIN_CONFIG.size) / 2;
-      if (gap < COIN_CONFIG.minVerticalGapPx) {
+      const gap = Math.abs(slot.y - spawnY) - (slot.height + SHIELD_CONFIG.size) / 2;
+      if (gap < SHIELD_CONFIG.minVerticalGapPx) {
         return false;
       }
     }
@@ -316,26 +304,21 @@ export class CoinSystem {
     return true;
   }
 
-  private computeSpawnCoinBounds(lane: LaneIndex, spawnY: number) {
-    const coinX = this.laneSystem!.getCenterX(lane);
+  private computeSpawnShieldBounds(lane: LaneIndex, spawnY: number) {
+    const shieldX = this.laneSystem!.getCenterX(lane);
     return computeEntityVisualBounds(
-      coinX,
+      shieldX,
       spawnY,
-      COIN_CONFIG.size,
-      COIN_CONFIG.size,
+      SHIELD_CONFIG.size,
+      SHIELD_CONFIG.size,
     );
   }
 
   private findSpawnObstacleConflict(
-    coinBounds: ReturnType<typeof computeEntityVisualBounds>,
+    shieldBounds: ReturnType<typeof computeEntityVisualBounds>,
     activeObstacles: readonly ObstacleEntity[],
-  ): {
-    obstacleType: ObstacleEntity['assetId'];
-    coinBounds: ReturnType<typeof computeEntityVisualBounds>;
-    obstacleBounds: ReturnType<typeof computeEntityVisualBounds>;
-    overlapAmountPx: number;
-  } | null {
-    const margin = COIN_CONFIG.obstacleSafetyMarginPx;
+  ): boolean {
+    const margin = SHIELD_CONFIG.obstacleSafetyMarginPx;
 
     for (const obstacle of activeObstacles) {
       const obstacleCore = computeEntityVisualBounds(
@@ -346,19 +329,12 @@ export class CoinSystem {
       );
       const bufferedObstacleBounds = expandWorldBounds(obstacleCore, margin);
 
-      if (!boundsIntersect(coinBounds, bufferedObstacleBounds)) {
-        continue;
+      if (boundsIntersect(shieldBounds, bufferedObstacleBounds)) {
+        return true;
       }
-
-      return {
-        obstacleType: obstacle.assetId,
-        coinBounds,
-        obstacleBounds: obstacleCore,
-        overlapAmountPx: computeOverlapArea(coinBounds, bufferedObstacleBounds),
-      };
     }
 
-    return null;
+    return false;
   }
 
   private claimRenderIndex(): number | null {
@@ -373,7 +349,7 @@ export class CoinSystem {
     return null;
   }
 
-  private activateRenderSlot(slot: MutableCoinSlot): void {
+  private activateRenderSlot(slot: MutableShieldSlot): void {
     const renderSlot = this.renderBridge.slots[slot.renderIndex];
     if (!renderSlot) {
       return;
@@ -386,7 +362,7 @@ export class CoinSystem {
     this.bumpRevision();
   }
 
-  private deactivateSlot(slot: MutableCoinSlot): void {
+  private deactivateSlot(slot: MutableShieldSlot): void {
     slot.active = false;
     this.activeIds.delete(slot.id);
 
@@ -405,7 +381,7 @@ export class CoinSystem {
     this.renderBridge.onRevisionChange?.();
   }
 
-  private syncRenderSlot(slot: MutableCoinSlot): void {
+  private syncRenderSlot(slot: MutableShieldSlot): void {
     const renderSlot = this.renderBridge.slots[slot.renderIndex];
     if (!renderSlot) {
       return;
@@ -415,13 +391,13 @@ export class CoinSystem {
     renderSlot.y.value = slot.y;
   }
 
-  private getActiveEntities(): readonly CoinEntity[] {
+  private getActiveEntities(): readonly ShieldEntity[] {
     return this.pool
       .filter((slot) => slot.active)
       .map(
-        (slot): CoinEntity => ({
+        (slot): ShieldEntity => ({
           id: slot.id,
-          assetId: 'COIN',
+          assetId: 'SHIELD',
           lane: slot.lane,
           x: slot.x,
           y: slot.y,

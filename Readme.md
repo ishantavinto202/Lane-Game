@@ -49,8 +49,25 @@ Phase 3 adds lane hazards, collision detection, distance-based scoring, and best
 
 ### What You Can Run Today
 
-- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80)
-- **Spawn bag** selects obstacle type: shuffled bag of `[Tire, Tire, Cone, Cone, Crate, Barrier]` — one pull per spawn attempt; if no fair lane exists the type is returned to the bag and the spawn is skipped (no fallback substitution)
+- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80 **high-contrast debug render**)
+
+### Temporary Barrier Debug Test (active)
+
+Barrier visibility confirmation is active — **spawn logic unchanged**:
+
+| Property | Debug value |
+|----------|-------------|
+| Size | 96×80 |
+| Fill | `#FF00FF` (bright magenta) |
+| Border | 4px black |
+| Label | `BARRIER` |
+| Stripes | Diagonal black bands (Barrier only) |
+
+**How to verify:** Play 2–3 minutes. Dev logs now trace obstacle lifecycle with `[ObstacleCreated]`, `[ObstacleReused]`, `[ObstacleActivated]`, `[ObstacleDeactivated]`, `[ObstacleRendered]`, and `[RenderSlotState]` entries so Barrier can be followed from pool slot assignment through render bridge activation and cleanup. Obstacle render bridge metadata is stored as top-level slot fields so Reanimated worklets only receive shared motion values.
+- **Spawn cycle** uses deterministic `[Tire, Cone, Crate, Barrier]` rotation for the whole run, guaranteeing every four successful obstacle pulls include all four types
+- **Opening showcase cadence** temporarily uses a 900ms obstacle interval for the first 4 successful spawns, introducing Tire, Cone, Crate, and Barrier early while preserving natural vertical spacing; normal difficulty-based spawn timing resumes afterward
+- Failed placements are retried before the deterministic cycle advances, so a blocked type is not silently skipped
+- **Pickup-safe placement** — resolved obstacle AABB must not intersect any active coin or shield AABB expanded by 25px (`COIN_CONFIG.obstacleSafetyMarginPx`); lane retry up to `obstacleSpawnLaneRetryLimit` across `obstacleSpawnYRetryOffsetsPx`, then skip spawn
 - Fair spawn logic always leaves at least one open lane — no impossible walls
 - Obstacles move downward at game speed via pooled Reanimated shared values (no per-frame React state)
 - Lane-based collision → **Game Over** stops engine, road, and obstacles + heavy haptic
@@ -76,7 +93,7 @@ src/components/lane-game/
 src/game/systems/
   obstacle/ObstacleSystem.ts       Spawn, pool, move, fair lane gaps
   obstacle/obstacle-spawn-bag.ts   Shuffled spawn bag + returnType on skip
-  obstacle/obstacle-spawn-debug.ts Dev spawn audit logs (100-attempt summary)
+  obstacle/obstacle-spawn-debug.ts   Unified Tire/Cone/Crate/Barrier audit (50-attempt summary) + legacy logs
   collision/CollisionSystem.ts     Lane + Y overlap detection
   score/ScoreSystem.ts               Distance → score, best tracking
   persistence/player-stats.persistence.ts  AsyncStorage best score
@@ -240,7 +257,8 @@ Adds lane collectible coins with independent spawning, overlap collection, run H
 ### What You Can Run Today
 
 - **Coins** spawn independently in lanes 0–2 (38×38 voxel coin sprite from `assets/voxel/Coin.png`, pooled Reanimated slots)
-- **Fair placement** — shuffled lane retry at spawn line; coin visual bounds + 20px clearance must not intersect any active obstacle visual bounds (+20px); skip spawn if no lane is valid (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs)
+- **Fair placement** — shuffled lane + Y-offset retry; full coin AABB must not intersect any active obstacle AABB expanded by 25px or any active shield pickup AABB; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
+- **Symmetrical spawn validation** — coins and shields reject buffered obstacle bounds at spawn; obstacles reject buffered coin/shield bounds at spawn (same margin, same `computeEntityVisualBounds` helpers)
 - **Collection** — player overlap removes coin, increments run count, light haptic, gold burst effect
 - **HUD** — top center shows `❤️ ❤️ ❤️     🪙 X` (current run coins, instant update)
 - **Retry** — run coin count resets to 0, active coin pool cleared, spawning restarts
@@ -316,6 +334,85 @@ restartRun() → runCoins: 0 in store → GameEngine.reset() → coinSystem.rese
 
 ---
 
+## Phase 4.3A — Shield Power-Up (Complete)
+
+Adds a collectible shield that absorbs one obstacle hit without health loss or invulnerability.
+
+### What You Can Run Today
+
+- **Shield pickups** spawn in lanes 0–2 (44×44 blue orb, pooled Reanimated slots, obstacle-safe + coin-safe placement with lane/Y retry)
+- **Collection** — overlap activates shield (`shieldActive = true`), light haptic, pickup removed; ignored if shield already active
+- **Shield bubble** — semi-transparent blue energy ring follows player above the car while active
+- **Collision absorb** — when shield active: obstacle destroyed, shield consumed, blue break flash, heavy haptic; no health loss, no damage blink, no red collision flash, no invulnerability
+- **HUD** — `🛡️` shown in top badge only while shield is active
+- **Retry** — `restartRun()` clears shield state and despawns all shield pickups
+
+### New Modules
+
+```txt
+src/game/systems/shield/
+  ShieldSystem.ts                  Spawn, pool, move, obstacle-safe lanes, collection probes
+  shield-motion.types.ts           Reanimated render bridge
+  shield.contract.ts
+src/game/assets/definitions/
+  shield.assets.ts                 44×44 shield pickup asset
+src/components/lane-game/
+  shield/ShieldSprite.tsx          Memoized pooled pickup render
+  shield/ShieldBubble.tsx          Player energy bubble (follows motion shared values)
+  shield/ShieldBreakFlash.tsx      Blue flash on shield consumption
+  layers/ShieldLayer.tsx           Between Coin and Obstacle layers
+```
+
+### Shield Flow
+
+```
+GameEngine.tick() →
+  ShieldSystem.updateShields() →
+  evaluateShieldCollection() → setShieldActive(true) + removeShieldById()
+  CollisionSystem.evaluate() →
+    if shieldActive → handleShieldAbsorb() → removeObstacle + triggerShieldBreak()
+    else → handleObstacleHit() (unchanged health path)
+```
+
+### Engine Tick Flow (Phase 4.3A)
+
+```
+rAF tick →
+  RoadSystem.updateScroll() →
+  getActiveCoins() + getActiveShields() →
+  ObstacleSystem.updateObstacles(coins, shields) →
+  CoinSystem.updateCoins(obstacles) →
+  ShieldSystem.updateShields(obstacles) →
+  evaluateCoinCollection() + evaluateShieldCollection() →
+  CollisionSystem.evaluate() → shield absorb OR health damage →
+  ScoreSystem.addDistance() →
+  Reanimated shared values (render)
+```
+
+### Render Layers (bottom → top)
+
+1. Left / right **grass**
+2. Left / right **sidewalk**
+3. **Road surface** + lane dividers
+4. **Coins** (pooled, `pointerEvents="none"`)
+5. **Shield pickups** (pooled, `pointerEvents="none"`)
+6. **Obstacles** (pooled)
+7. **Player** + **ShieldBubble** + **ShieldBreakFlash**
+8. **Controls**
+9. **UI badge** — score/status/best (top left)
+10. **HealthHud** — hearts + shield icon + run coins (top center)
+11. **PauseButton** — top-right
+12. **PauseOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
+
+### Retry Integration
+
+```
+restartRun() → shieldActive: false + shieldBreakNonce: 0 in store →
+  GameEngine.reset() → shieldSystem.reset()
+```
+
+---
+
 ## Architecture
 
 ### System Separation
@@ -328,7 +425,7 @@ restartRun() → runCoins: 0 in store → GameEngine.reset() → coinSystem.rese
 | **PlayerSystem** | Authoritative lane index, `tryLaneChange()` | ✅ |
 | **PlayerMotionController** | Reanimated X transition + tilt | ✅ |
 | **InputManager** | Debounce, haptics, routes all lane input | ✅ |
-| **ObstacleSystem** | Spawn bag type pick, pool, move, fair lane gaps | ✅ |
+| **ObstacleSystem** | Spawn bag type pick, pool, move, fair lane gaps, coin/shield-safe spawn | ✅ |
 | **CollisionSystem** | Lane + Y overlap detection | ✅ |
 | **HealthSystem** | 3-health pool, 1000ms invulnerability | ✅ |
 | **CoinSystem** | Independent spawn, pool, move, obstacle-safe placement, collection | ✅ |

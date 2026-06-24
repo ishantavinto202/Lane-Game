@@ -10,7 +10,7 @@ export interface CoinCollectEffect {
   readonly nonce: number;
 }
 
-/** Zustand store shape — Phase 4.2: coins + lifecycle. */
+/** Zustand store shape — Phase 4.2: coins + lifecycle. Phase 4.3A: shield. */
 export interface GameStoreState {
   readonly status: GameStatus;
   readonly resetNonce: number;
@@ -20,6 +20,8 @@ export interface GameStoreState {
   readonly runCoins: number;
   readonly lifetimeCoins: number;
   readonly coinCollectEffect: CoinCollectEffect;
+  readonly shieldActive: boolean;
+  readonly shieldBreakNonce: number;
   readonly scoreSnapshot: ScoreSnapshot;
   readonly runStats: RunStatistics;
 }
@@ -37,6 +39,9 @@ export interface GameStoreActions {
   readonly setRunCoins: (runCoins: number) => void;
   readonly setLifetimeCoins: (lifetimeCoins: number) => void;
   readonly triggerCoinCollect: (x: number, y: number) => void;
+  readonly setShieldActive: (shieldActive: boolean) => void;
+  readonly triggerShieldBreak: () => void;
+  readonly clearShieldState: () => void;
   readonly triggerCollisionFlash: () => void;
   readonly triggerDamageBlink: () => void;
   readonly triggerGameOver: () => void;

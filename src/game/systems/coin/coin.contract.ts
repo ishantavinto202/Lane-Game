@@ -1,4 +1,4 @@
-import type { CoinEntity, ObstacleEntity } from '../../types';
+import type { CoinEntity, ObstacleEntity, ShieldEntity } from '../../types';
 
 /** Coin spawning, movement, and collection contract (Phase 4.2). */
 export interface CoinSystemContract {
@@ -7,6 +7,7 @@ export interface CoinSystemContract {
     deltaMs: number,
     speedPxPerSec: number,
     activeObstacles: readonly ObstacleEntity[],
+    activeShields: readonly ShieldEntity[],
   ) => readonly CoinEntity[];
   readonly reset: () => void;
   readonly dispose: () => void;

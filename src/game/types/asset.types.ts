@@ -67,6 +67,7 @@ export interface AssetDefinition {
 export type AssetId =
   | 'PLAYER_CAR'
   | 'COIN'
+  | 'SHIELD'
   | 'OBSTACLE_TIRE'
   | 'OBSTACLE_CONE'
   | 'OBSTACLE_CRATE'

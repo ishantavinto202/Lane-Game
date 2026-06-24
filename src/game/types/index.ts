@@ -36,6 +36,7 @@ export type {
   EntityRefs,
   ObstacleEntity,
   PlayerEntity,
+  ShieldEntity,
 } from './entity.types';
 
 export type {

@@ -20,6 +20,8 @@ export const useGameStore = create<GameStore>((set) => ({
   runCoins: 0,
   lifetimeCoins: EMPTY_PERSISTED_STATS.lifetimeCoins,
   coinCollectEffect: INITIAL_COIN_COLLECT_EFFECT,
+  shieldActive: false,
+  shieldBreakNonce: 0,
   scoreSnapshot: INITIAL_SCORE_SNAPSHOT,
   runStats: INITIAL_RUN_STATS,
   setStatus: (status) => set({ status }),
@@ -31,6 +33,8 @@ export const useGameStore = create<GameStore>((set) => ({
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
       runCoins: 0,
+      shieldActive: false,
+      shieldBreakNonce: 0,
       scoreSnapshot: {
         currentScore: 0,
         bestScore: state.scoreSnapshot.bestScore,
@@ -43,6 +47,8 @@ export const useGameStore = create<GameStore>((set) => ({
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
       runCoins: 0,
+      shieldActive: false,
+      shieldBreakNonce: 0,
       scoreSnapshot: {
         currentScore: 0,
         bestScore: state.scoreSnapshot.bestScore,
@@ -62,6 +68,13 @@ export const useGameStore = create<GameStore>((set) => ({
         nonce: state.coinCollectEffect.nonce + 1,
       },
     })),
+  setShieldActive: (shieldActive) => set({ shieldActive }),
+  triggerShieldBreak: () =>
+    set((state) => ({
+      shieldActive: false,
+      shieldBreakNonce: state.shieldBreakNonce + 1,
+    })),
+  clearShieldState: () => set({ shieldActive: false, shieldBreakNonce: 0 }),
   triggerCollisionFlash: () =>
     set((state) => ({
       collisionFlashNonce: state.collisionFlashNonce + 1,

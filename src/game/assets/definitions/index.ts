@@ -1,4 +1,5 @@
 export { COIN_ASSET } from './coin.assets';
+export { SHIELD_ASSET } from './shield.assets';
 
 export { OBSTACLE_ASSETS, OBSTACLE_ASSET_MAP } from './obstacle.assets';
 export {

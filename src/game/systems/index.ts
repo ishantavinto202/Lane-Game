@@ -34,6 +34,10 @@ export type { CoinSystemContract } from './coin/coin.contract';
 export { CoinSystem, createCoinCollisionProbes } from './coin/CoinSystem';
 export type { CoinRenderBridge, CoinRenderSlot } from './coin/coin-motion.types';
 
+export type { ShieldSystemContract } from './shield/shield.contract';
+export { ShieldSystem, createShieldCollisionProbes } from './shield/ShieldSystem';
+export type { ShieldRenderBridge, ShieldRenderSlot } from './shield/shield-motion.types';
+
 export type { AudioManagerContract } from './audio/audio.contract';
 export { AudioManager } from './audio/AudioManager';
 export { InputManagerAudioBridge } from './audio/InputManagerAudioBridge';

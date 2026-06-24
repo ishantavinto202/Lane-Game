@@ -35,6 +35,12 @@ export interface CoinEntity extends BaseEntity {
   readonly speed: number;
 }
 
+export interface ShieldEntity extends BaseEntity {
+  readonly assetId: 'SHIELD';
+  readonly lane: LaneIndex;
+  readonly speed: number;
+}
+
 /** Pool-friendly mutable refs used by the engine (not React state). */
 export interface EntityRefs {
   readonly player: PlayerEntity;

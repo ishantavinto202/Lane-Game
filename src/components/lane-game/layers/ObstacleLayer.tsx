@@ -16,18 +16,20 @@ function ObstacleLayerComponent({ renderBridge, poolRevision }: ObstacleLayerPro
   return (
     <View pointerEvents="none" className="absolute inset-0">
       {renderBridge.slots.map((slot, index) => {
-        const { meta } = slot;
-        if (!meta.active || !meta.assetId) {
+        if (!slot.active || !slot.assetId) {
           return null;
         }
 
         return (
           <ObstacleSprite
             key={`obstacle-slot-${index}`}
-            slot={slot}
-            assetId={meta.assetId}
-            width={meta.width}
-            height={meta.height}
+            x={slot.x}
+            y={slot.y}
+            opacity={slot.opacity}
+            renderIndex={index}
+            assetId={slot.assetId}
+            width={slot.width}
+            height={slot.height}
           />
         );
       })}

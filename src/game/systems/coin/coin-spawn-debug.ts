@@ -1,40 +1,35 @@
 import type { LaneIndex, ObstacleAssetId, WorldBounds } from '../../types';
 
 export interface CoinSpawnRejectedEvent {
-  readonly coinX: number;
-  readonly coinY: number;
   readonly lane: LaneIndex;
+  readonly coinBounds: WorldBounds;
   readonly obstacleType: ObstacleAssetId;
-  readonly distancePx: number;
+  readonly obstacleBounds: WorldBounds;
+  readonly overlapAmountPx: number;
 }
 
-/** Dev-only rejection audit when expanded spawn bounds intersect an obstacle. */
+/** Dev-only rejection audit when coin bounds intersect buffered obstacle bounds. */
 export function logCoinSpawnRejected(event: CoinSpawnRejectedEvent): void {
   if (!__DEV__) {
     return;
   }
 
   console.log('[CoinSpawnRejected]', {
-    coinPosition: { x: event.coinX, y: event.coinY, lane: event.lane },
+    coinLane: event.lane,
+    coinBounds: formatBounds(event.coinBounds),
     obstacleType: event.obstacleType,
-    distancePx: Math.round(event.distancePx),
+    obstacleBounds: formatBounds(event.obstacleBounds),
+    overlapAmountPx: Math.round(event.overlapAmountPx * 100) / 100,
   });
 }
 
-/** Dev-only log when every lane fails validation at the spawn line. */
+/** Dev-only log when every lane/position fails validation. */
 export function logCoinSpawnSkipped(spawnY: number): void {
   if (!__DEV__) {
     return;
   }
 
-  console.log('[CoinSpawnSkipped] No valid lane at spawnY=', spawnY);
-}
-
-/** Euclidean distance between two bounds centers. */
-export function distanceBetweenBounds(a: WorldBounds, b: WorldBounds): number {
-  const dx = a.centerX - b.centerX;
-  const dy = a.centerY - b.centerY;
-  return Math.sqrt(dx * dx + dy * dy);
+  console.log('[CoinSpawnSkipped] No valid lane/position near spawnY=', spawnY);
 }
 
 /** Inflates an AABB by padding on all sides. */
@@ -54,6 +49,13 @@ export function boundsIntersect(a: WorldBounds, b: WorldBounds): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
+/** Overlap width × height between two bounds (0 when separated). */
+export function computeOverlapArea(a: WorldBounds, b: WorldBounds): number {
+  const overlapWidth = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const overlapHeight = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return overlapWidth * overlapHeight;
+}
+
 /** Anchor-centered entity bounds from rendered width/height. */
 export function computeEntityVisualBounds(
   x: number,
@@ -71,5 +73,53 @@ export function computeEntityVisualBounds(
     bottom: top + height,
     centerX: x,
     centerY: y,
+  };
+}
+
+/** Minimal bounds source for cross-pickup spawn validation. */
+export interface PickupBoundsSource {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Returns first active pickup whose visual bounds overlap the candidate bounds. */
+export function findPickupBoundsConflict(
+  candidateBounds: WorldBounds,
+  pickups: readonly PickupBoundsSource[],
+): { bounds: WorldBounds; overlapAmountPx: number } | null {
+  for (const pickup of pickups) {
+    const otherBounds = computeEntityVisualBounds(
+      pickup.x,
+      pickup.y,
+      pickup.width,
+      pickup.height,
+    );
+
+    if (!boundsIntersect(candidateBounds, otherBounds)) {
+      continue;
+    }
+
+    return {
+      bounds: otherBounds,
+      overlapAmountPx: computeOverlapArea(candidateBounds, otherBounds),
+    };
+  }
+
+  return null;
+}
+
+function formatBounds(bounds: WorldBounds): {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+} {
+  return {
+    left: Math.round(bounds.left),
+    top: Math.round(bounds.top),
+    right: Math.round(bounds.right),
+    bottom: Math.round(bounds.bottom),
   };
 }

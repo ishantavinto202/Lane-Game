@@ -4,6 +4,7 @@ export { PlayerLayer } from './layers/PlayerLayer';
 export { UiLayer } from './layers/UiLayer';
 export { HealthHud } from './ui/HealthHud';
 export { CoinLayer } from './layers/CoinLayer';
+export { ShieldLayer } from './layers/ShieldLayer';
 export { ControlsLayer } from './layers/ControlsLayer';
 export { ControlButton } from './controls/ControlButton';
 export { PauseButton } from './controls/PauseButton';

@@ -9,6 +9,7 @@ import { AudioManager } from '@/src/game/systems/audio/AudioManager';
 import type { InputManager } from '@/src/game/systems/input/InputManager';
 import type { ObstacleRenderBridge } from '@/src/game/systems/obstacle/obstacle-motion.types';
 import type { CoinRenderBridge } from '@/src/game/systems/coin/coin-motion.types';
+import type { ShieldRenderBridge } from '@/src/game/systems/shield/shield-motion.types';
 import type { PlayerMotionSharedValues } from '@/src/game/systems/player/PlayerMotionController';
 import type { PlayerSnapshot } from '@/src/game/systems/player/PlayerSystem';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
@@ -37,9 +38,31 @@ function buildObstacleRenderBridge(onRevisionChange: () => void): ObstacleRender
     x: makeMutable(0),
     y: makeMutable(0),
     opacity: makeMutable(0),
+    active: false,
+    assetId: null as ObstacleRenderBridge['slots'][number]['assetId'],
+    width: 0,
+    height: 0,
+  }));
+
+  return {
+    slots,
+    revision: { current: 0 },
+    onRevisionChange,
+  };
+}
+
+function hasTopLevelObstacleMetadata(renderBridge: ObstacleRenderBridge): boolean {
+  const [firstSlot] = renderBridge.slots;
+  return !firstSlot || 'active' in firstSlot;
+}
+
+function buildCoinRenderBridge(onRevisionChange: () => void): CoinRenderBridge {
+  const slots = Array.from({ length: POOL_CONSTANTS.MAX_COINS }, () => ({
+    x: makeMutable(0),
+    y: makeMutable(0),
+    opacity: makeMutable(0),
     meta: {
       active: false,
-      assetId: null as ObstacleRenderBridge['slots'][number]['meta']['assetId'],
       width: 0,
       height: 0,
     },
@@ -52,8 +75,8 @@ function buildObstacleRenderBridge(onRevisionChange: () => void): ObstacleRender
   };
 }
 
-function buildCoinRenderBridge(onRevisionChange: () => void): CoinRenderBridge {
-  const slots = Array.from({ length: POOL_CONSTANTS.MAX_COINS }, () => ({
+function buildShieldRenderBridge(onRevisionChange: () => void): ShieldRenderBridge {
+  const slots = Array.from({ length: POOL_CONSTANTS.MAX_SHIELDS }, () => ({
     x: makeMutable(0),
     y: makeMutable(0),
     opacity: makeMutable(0),
@@ -81,6 +104,8 @@ export interface UseGameEngineResult {
   readonly obstaclePoolRevision: number;
   readonly coinRenderBridge: CoinRenderBridge;
   readonly coinPoolRevision: number;
+  readonly shieldRenderBridge: ShieldRenderBridge;
+  readonly shieldPoolRevision: number;
 }
 
 export function useGameLayout(): GameLayout {
@@ -100,6 +125,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
   const resetNonce = useGameStore(gameStoreSelectors.resetNonce);
   const [obstaclePoolRevision, setObstaclePoolRevision] = useState(0);
   const [coinPoolRevision, setCoinPoolRevision] = useState(0);
+  const [shieldPoolRevision, setShieldPoolRevision] = useState(0);
 
   const handleObstaclePoolRevision = useCallback(() => {
     setObstaclePoolRevision((value) => value + 1);
@@ -109,8 +135,15 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
     setCoinPoolRevision((value) => value + 1);
   }, []);
 
+  const handleShieldPoolRevision = useCallback(() => {
+    setShieldPoolRevision((value) => value + 1);
+  }, []);
+
   const obstacleRenderBridgeRef = useRef<ObstacleRenderBridge | null>(null);
-  if (!obstacleRenderBridgeRef.current) {
+  if (
+    !obstacleRenderBridgeRef.current ||
+    !hasTopLevelObstacleMetadata(obstacleRenderBridgeRef.current)
+  ) {
     obstacleRenderBridgeRef.current = buildObstacleRenderBridge(handleObstaclePoolRevision);
   }
   const obstacleRenderBridge = obstacleRenderBridgeRef.current;
@@ -122,6 +155,13 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
   }
   const coinRenderBridge = coinRenderBridgeRef.current;
   coinRenderBridge.onRevisionChange = handleCoinPoolRevision;
+
+  const shieldRenderBridgeRef = useRef<ShieldRenderBridge | null>(null);
+  if (!shieldRenderBridgeRef.current) {
+    shieldRenderBridgeRef.current = buildShieldRenderBridge(handleShieldPoolRevision);
+  }
+  const shieldRenderBridge = shieldRenderBridgeRef.current;
+  shieldRenderBridge.onRevisionChange = handleShieldPoolRevision;
 
   const playerMotion = useMemo<PlayerMotionSharedValues>(
     () => ({
@@ -153,6 +193,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
       playerMotion,
       obstacleRenderBridge,
       coinRenderBridge,
+      shieldRenderBridge,
       audioManager,
     });
     engineRef.current = engine;
@@ -167,7 +208,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
       inputManagerRef.current = null;
       audioManagerRef.current = null;
     };
-  }, [layout, coinRenderBridge, obstacleRenderBridge, playerMotion, scrollY]);
+  }, [layout, coinRenderBridge, shieldRenderBridge, obstacleRenderBridge, playerMotion, scrollY]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -199,5 +240,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
     obstaclePoolRevision,
     coinRenderBridge,
     coinPoolRevision,
+    shieldRenderBridge,
+    shieldPoolRevision,
   };
 }

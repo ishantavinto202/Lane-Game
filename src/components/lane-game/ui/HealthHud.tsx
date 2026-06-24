@@ -14,6 +14,7 @@ function HealthHudComponent() {
   const status = useGameStore(gameStoreSelectors.status);
   const health = useGameStore(gameStoreSelectors.health);
   const runCoins = useGameStore(gameStoreSelectors.runCoins);
+  const shieldActive = useGameStore(gameStoreSelectors.shieldActive);
 
   const isVisible = status !== GameStatus.GameOver;
 
@@ -28,6 +29,7 @@ function HealthHudComponent() {
   }, [health]);
 
   const coinLabel = useMemo(() => `🪙 ${runCoins}`, [runCoins]);
+  const shieldLabel = useMemo(() => (shieldActive ? '🛡️' : null), [shieldActive]);
 
   const containerStyle = useMemo<ViewStyle>(
     () => ({
@@ -44,6 +46,7 @@ function HealthHudComponent() {
     <View pointerEvents="none" style={[styles.layer, containerStyle]}>
       <View style={styles.badge}>
         <Text style={styles.hearts}>{heartsLabel}</Text>
+        {shieldLabel ? <Text style={styles.shield}>{shieldLabel}</Text> : null}
         <Text style={styles.coins}>{coinLabel}</Text>
       </View>
     </View>
@@ -73,6 +76,10 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     textAlign: 'center',
     letterSpacing: 4,
+  },
+  shield: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   coins: {
     fontSize: 20,

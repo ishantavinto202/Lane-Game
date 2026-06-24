@@ -9,7 +9,7 @@ const BASE_OBSTACLE_SPAWN = {
   verticalGapMultiplier: 1,
 } as const;
 
-/** Tire obstacle — 64x64, compact circular hitbox. */
+/** Tire obstacle — DEBUG: bright cyan for visibility test (revert after confirmation). */
 export const OBSTACLE_TIRE_ASSET: ObstacleAssetDefinition = {
   id: 'OBSTACLE_TIRE',
   width: 64,
@@ -25,16 +25,17 @@ export const OBSTACLE_TIRE_ASSET: ObstacleAssetDefinition = {
   },
   visual: {
     kind: 'shape',
-    primaryColor: '#1A1A1A',
-    secondaryColor: '#2B2B2B',
-    borderColor: '#444444',
-    borderWidth: 3,
+    primaryColor: '#00FFFF',
+    secondaryColor: '#000000',
+    borderColor: '#000000',
+    borderWidth: 4,
     cornerRadius: 32,
     label: 'TIRE',
   },
   spawnRule: {
     ...BASE_OBSTACLE_SPAWN,
     weight: 30,
+    minSpawnDistance: 200,
     regions: ['any-lane'],
   },
 } as const;
@@ -100,7 +101,7 @@ export const OBSTACLE_CRATE_ASSET: ObstacleAssetDefinition = {
   },
 } as const;
 
-/** Barrier — 96x80, lane-width hazard matching crate footprint. */
+/** Barrier — temporary high-contrast styling for runtime visibility confirmation. */
 export const OBSTACLE_BARRIER_ASSET: ObstacleAssetDefinition = {
   id: 'OBSTACLE_BARRIER',
   width: 96,
@@ -116,10 +117,10 @@ export const OBSTACLE_BARRIER_ASSET: ObstacleAssetDefinition = {
   },
   visual: {
     kind: 'shape',
-    primaryColor: '#FFD60A',
+    primaryColor: '#FF00FF',
     secondaryColor: '#000000',
-    borderColor: '#1A1A1A',
-    borderWidth: 3,
+    borderColor: '#000000',
+    borderWidth: 4,
     cornerRadius: 4,
     label: 'BARRIER',
   },

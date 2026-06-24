@@ -6,6 +6,7 @@ import { ROAD_COLORS } from '@/src/game/config';
 
 import { ControlsLayer } from '../layers/ControlsLayer';
 import { CoinLayer } from '../layers/CoinLayer';
+import { ShieldLayer } from '../layers/ShieldLayer';
 import { ObstacleLayer } from '../layers/ObstacleLayer';
 import { PlayerLayer } from '../layers/PlayerLayer';
 import { RoadLayer } from '../layers/RoadLayer';
@@ -19,8 +20,18 @@ import { useGameEngine, useGameLayout } from '../hooks/useGameEngine';
 
 function GameScreenComponent() {
   const layout = useGameLayout();
-  const { scrollY, playerMotion, playerSnapshot, inputManagerRef, obstacleRenderBridge, obstaclePoolRevision, coinRenderBridge, coinPoolRevision } =
-    useGameEngine(layout);
+  const {
+    scrollY,
+    playerMotion,
+    playerSnapshot,
+    inputManagerRef,
+    obstacleRenderBridge,
+    obstaclePoolRevision,
+    coinRenderBridge,
+    coinPoolRevision,
+    shieldRenderBridge,
+    shieldPoolRevision,
+  } = useGameEngine(layout);
 
   const rootStyle = useMemo<ViewStyle>(
     () => ({
@@ -47,6 +58,7 @@ function GameScreenComponent() {
       <View style={worldCameraStyle}>
         <RoadLayer layout={layout} scrollY={scrollY} />
         <CoinLayer renderBridge={coinRenderBridge} poolRevision={coinPoolRevision} />
+        <ShieldLayer renderBridge={shieldRenderBridge} poolRevision={shieldPoolRevision} />
         <ObstacleLayer renderBridge={obstacleRenderBridge} poolRevision={obstaclePoolRevision} />
         <PlayerLayer motion={playerMotion} snapshot={playerSnapshot} />
         <ControlsLayer inputManagerRef={inputManagerRef} />

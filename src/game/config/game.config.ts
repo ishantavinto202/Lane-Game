@@ -51,6 +51,10 @@ export const SPAWN_CONFIG = {
   weightedRandomSeed: 'lane-game-spawn',
   decorationSpawnIntervalMs: 900,
   obstacleSpawnLaneRetryLimit: 6,
+  openingShowcaseSpawnCount: 4,
+  openingShowcaseSpawnIntervalMs: 900,
+  /** Upward Y offsets (px) retried when spawn line is blocked by pickups or lane gaps. */
+  obstacleSpawnYRetryOffsetsPx: [0, -40, -80, -120] as const,
 } as const;
 
 /** Touch control behavior. */
@@ -85,9 +89,27 @@ export const COIN_CONFIG = {
   minSpawnIntervalMs: 1100,
   maxSpawnIntervalMs: 2600,
   minVerticalGapPx: 160,
-  /** Padding added to coin + obstacle visual bounds before spawn overlap test. */
-  spawnClearancePx: 20,
+  /** Padding added to obstacle visual bounds before spawn overlap test. */
+  obstacleSafetyMarginPx: 25,
+  /** Upward Y offsets (px) retried when spawn line is blocked. */
+  spawnYRetryOffsetsPx: [0, -40, -80, -120] as const,
   hitboxScale: 0.88,
   minCollectionOverlapArea: 41,
   collectEffectDurationMs: 220,
+} as const;
+
+/** Shield pickup spawn, collection, and pooling (Phase 4.3A). */
+export const SHIELD_CONFIG = {
+  size: 44,
+  maxActivePickups: POOL_CONSTANTS.MAX_SHIELDS,
+  initialDelayMs: 6000,
+  minSpawnIntervalMs: 9000,
+  maxSpawnIntervalMs: 18000,
+  minVerticalGapPx: 220,
+  obstacleSafetyMarginPx: 25,
+  spawnYRetryOffsetsPx: [0, -40, -80, -120] as const,
+  hitboxScale: 0.88,
+  minCollectionOverlapArea: 45,
+  breakEffectDurationMs: 240,
+  bubblePaddingPx: 24,
 } as const;

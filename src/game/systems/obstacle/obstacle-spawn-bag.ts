@@ -1,57 +1,36 @@
 import type { ObstacleAssetId } from '../../types';
 
-/** Bag template — two Tire/Cone entries keep common hazards frequent without streaks. */
-const SPAWN_BAG_TEMPLATE: readonly ObstacleAssetId[] = [
+/** Deterministic cycle — guarantees every four pulls include all obstacle types. */
+const OBSTACLE_VARIETY_CYCLE: readonly ObstacleAssetId[] = [
   'OBSTACLE_TIRE',
-  'OBSTACLE_TIRE',
-  'OBSTACLE_CONE',
   'OBSTACLE_CONE',
   'OBSTACLE_CRATE',
   'OBSTACLE_BARRIER',
 ] as const;
 
-function shuffleInPlace<T>(items: T[]): void {
-  for (let index = items.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    const current = items[index];
-    items[index] = items[swapIndex]!;
-    items[swapIndex] = current!;
-  }
-}
-
-/** Shuffled spawn bag — one pull per spawn, refill when empty. */
+/** Deterministic spawn cycle — one pull per spawn, retrying failed placements first. */
 export class ObstacleSpawnBag {
-  private bag: ObstacleAssetId[] = [];
-
-  constructor() {
-    this.refill();
-  }
+  private retryQueue: ObstacleAssetId[] = [];
+  private cycleIndex = 0;
 
   pullNext(): ObstacleAssetId {
-    if (this.bag.length === 0) {
-      this.refill();
+    const retry = this.retryQueue.shift();
+    if (retry) {
+      return retry;
     }
 
-    const next = this.bag.pop();
-    if (!next) {
-      this.refill();
-      return this.pullNext();
-    }
-
+    const next = OBSTACLE_VARIETY_CYCLE[this.cycleIndex]!;
+    this.cycleIndex = (this.cycleIndex + 1) % OBSTACLE_VARIETY_CYCLE.length;
     return next;
   }
 
-  /** Returns a type to the bag when lane placement fails — preserves bag order integrity. */
+  /** Retries a failed placement before advancing the deterministic cycle. */
   returnType(assetId: ObstacleAssetId): void {
-    this.bag.push(assetId);
+    this.retryQueue.unshift(assetId);
   }
 
   reset(): void {
-    this.refill();
-  }
-
-  private refill(): void {
-    this.bag = [...SPAWN_BAG_TEMPLATE];
-    shuffleInPlace(this.bag);
+    this.retryQueue = [];
+    this.cycleIndex = 0;
   }
 }

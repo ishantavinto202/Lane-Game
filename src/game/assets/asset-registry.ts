@@ -7,6 +7,7 @@ import {
   PLAYER_CAR_ASSET,
   ROAD_ASSETS,
   ROAD_ASSET_MAP,
+  SHIELD_ASSET,
 } from './definitions';
 
 /** Canonical lookup table for Phase 1 assets. */
@@ -16,6 +17,7 @@ export const ASSET_REGISTRY: Record<
 > = {
   PLAYER_CAR: PLAYER_CAR_ASSET,
   COIN: COIN_ASSET,
+  SHIELD: SHIELD_ASSET,
   OBSTACLE_TIRE: OBSTACLE_ASSET_MAP.OBSTACLE_TIRE,
   OBSTACLE_CONE: OBSTACLE_ASSET_MAP.OBSTACLE_CONE,
   OBSTACLE_CRATE: OBSTACLE_ASSET_MAP.OBSTACLE_CRATE,
@@ -29,6 +31,7 @@ export const ASSET_REGISTRY: Record<
 export const ALL_ASSETS: readonly AssetDefinition[] = [
   PLAYER_CAR_ASSET,
   COIN_ASSET,
+  SHIELD_ASSET,
   ...OBSTACLE_ASSETS,
   ...ROAD_ASSETS,
 ] as const;
