@@ -44,6 +44,8 @@ import { SpeedBoostRuntime } from '../systems/speed-boost/SpeedBoostRuntime';
 import type { SpeedBoostRenderBridge } from '../systems/speed-boost/speed-boost-motion.types';
 import { RoadSystem } from '../systems/road/RoadSystem';
 import { ScoreSystem } from '../systems/score/ScoreSystem';
+import { DecorationSystem } from '../systems/decoration/DecorationSystem';
+import type { DecorationRenderBridge } from '../systems/decoration/decoration-motion.types';
 
 import type { InputSource } from '../systems/input/input.types';
 
@@ -55,6 +57,7 @@ export interface GameEngineOptions {
   readonly coinRenderBridge: CoinRenderBridge;
   readonly shieldRenderBridge: ShieldRenderBridge;
   readonly speedBoostRenderBridge: SpeedBoostRenderBridge;
+  readonly decorationRenderBridge: DecorationRenderBridge;
   readonly audioManager: AudioManagerContract;
 }
 
@@ -67,6 +70,7 @@ export class GameEngine {
   readonly coinSystem: CoinSystem;
   readonly shieldSystem: ShieldSystem;
   readonly speedBoostSystem: SpeedBoostSystem;
+  readonly decorationSystem: DecorationSystem;
   readonly speedBoostRuntime = new SpeedBoostRuntime();
   readonly collisionSystem = new CollisionSystem();
   readonly scoreSystem = new ScoreSystem();
@@ -91,6 +95,7 @@ export class GameEngine {
     this.coinSystem = new CoinSystem(options.coinRenderBridge);
     this.shieldSystem = new ShieldSystem(options.shieldRenderBridge);
     this.speedBoostSystem = new SpeedBoostSystem(options.speedBoostRenderBridge);
+    this.decorationSystem = new DecorationSystem(options.decorationRenderBridge);
     this.motionController = new PlayerMotionController(options.playerMotion);
     this.inputManager = new InputManager({
       playerSystem: this.playerSystem,
@@ -110,6 +115,7 @@ export class GameEngine {
     this.coinSystem.initialize(layout, this.laneSystem);
     this.shieldSystem.initialize(layout, this.laneSystem);
     this.speedBoostSystem.initialize(layout, this.laneSystem);
+    this.decorationSystem.initialize(layout);
     this.inputManager.initialize(layout);
     this.roadSystem.setSpeed(ENGINE_CONFIG.baseScrollSpeedPxPerSec);
     this.roadSystem.reset();
@@ -118,6 +124,7 @@ export class GameEngine {
     this.coinSystem.reset();
     this.shieldSystem.reset();
     this.speedBoostSystem.reset();
+    this.decorationSystem.reset();
     this.speedBoostRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
@@ -174,6 +181,7 @@ export class GameEngine {
     this.coinSystem.reset();
     this.shieldSystem.reset();
     this.speedBoostSystem.reset();
+    this.decorationSystem.reset();
     this.speedBoostRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
@@ -203,6 +211,7 @@ export class GameEngine {
     this.coinSystem.dispose();
     this.shieldSystem.dispose();
     this.speedBoostSystem.dispose();
+    this.decorationSystem.dispose();
     this.collisionSystem.reset();
     this.healthSystem.reset();
     this.motionController.dispose();
@@ -248,6 +257,7 @@ export class GameEngine {
 
     this.roadSystem.setSpeed(effectiveSpeed);
     this.roadSystem.updateScroll(deltaMs);
+    this.decorationSystem.updateDecorations(deltaMs, effectiveSpeed);
 
     const activeCoinsBeforeObstacles = this.coinSystem.getActiveCoins();
     const activeShields = this.shieldSystem.getActiveShields();

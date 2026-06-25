@@ -1,5 +1,114 @@
+import type { ImageSourcePropType } from 'react-native';
+
 import { RenderLayer } from '../../types';
 import type { ObstacleAssetDefinition } from '../../types';
+
+export interface ObstacleCrateSkinDefinition {
+  readonly source: ImageSourcePropType;
+  readonly sourceWidth: number;
+  readonly sourceHeight: number;
+  readonly spriteWidth: number;
+  readonly spriteHeight: number;
+  /** Body-left shadow padding in source pixels — crate body begins at this X. */
+  readonly sourceBodyOffsetX: number;
+  readonly sourceBodyOffsetY: number;
+  readonly sourceBodyWidth: number;
+  readonly sourceBodyHeight: number;
+  readonly visualOffsetX: number;
+  readonly visualOffsetY: number;
+  /** Presentation-only multiplier — scales sprite from body center; gameplay footprint unchanged. */
+  readonly visualScale: number;
+}
+
+export const OBSTACLE_CONE_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Cone.png');
+
+/** Cone presentation skin — baked shadow extends left; gameplay footprint stays 48×48. */
+export const OBSTACLE_CONE_SKIN: ObstacleCrateSkinDefinition = {
+  source: OBSTACLE_CONE_IMAGE_SOURCE,
+  sourceWidth: 138,
+  sourceHeight: 118,
+  spriteWidth: 138,
+  spriteHeight: 118,
+  sourceBodyOffsetX: 53,
+  sourceBodyOffsetY: 0,
+  sourceBodyWidth: 85,
+  sourceBodyHeight: 92,
+  visualOffsetX: -(53 + 85 / 2),
+  visualOffsetY: -(0 + 92 / 2),
+  visualScale: 0.64,
+} as const;
+
+export const OBSTACLE_CRATE_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Crate.png');
+
+/** Crate presentation skin — baked shadow extends left; gameplay footprint stays 96×96. */
+export const OBSTACLE_CRATE_SKIN: ObstacleCrateSkinDefinition = {
+  source: OBSTACLE_CRATE_IMAGE_SOURCE,
+  sourceWidth: 148,
+  sourceHeight: 112,
+  spriteWidth: 148,
+  spriteHeight: 112,
+  sourceBodyOffsetX: 56,
+  sourceBodyOffsetY: 0,
+  sourceBodyWidth: 92,
+  sourceBodyHeight: 100,
+  visualOffsetX: -(56 + 92 / 2),
+  visualOffsetY: -(0 + 100 / 2),
+  visualScale: 0.72,
+} as const;
+
+export const OBSTACLE_BARRIER_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Barrier.png');
+
+/** Barrier presentation skin — baked shadow extends outside body; gameplay footprint stays 96×80. */
+export const OBSTACLE_BARRIER_SKIN: ObstacleCrateSkinDefinition = {
+  source: OBSTACLE_BARRIER_IMAGE_SOURCE,
+  sourceWidth: 153,
+  sourceHeight: 158,
+  spriteWidth: 153,
+  spriteHeight: 158,
+  sourceBodyOffsetX: 13,
+  sourceBodyOffsetY: 0,
+  sourceBodyWidth: 141,
+  sourceBodyHeight: 135,
+  visualOffsetX: -(13 + 141 / 2),
+  visualOffsetY: -(0 + 135 / 2),
+  visualScale: 0.54,
+} as const;
+
+export const OBSTACLE_TIRE_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Tyre.png');
+
+/** Tire presentation skin — baked shadow extends left; gameplay footprint stays 64×64. */
+export const OBSTACLE_TIRE_SKIN: ObstacleCrateSkinDefinition = {
+  source: OBSTACLE_TIRE_IMAGE_SOURCE,
+  sourceWidth: 144,
+  sourceHeight: 95,
+  spriteWidth: 144,
+  spriteHeight: 95,
+  sourceBodyOffsetX: 20,
+  sourceBodyOffsetY: 0,
+  sourceBodyWidth: 124,
+  sourceBodyHeight: 95,
+  visualOffsetX: -(20 + 124 / 2),
+  visualOffsetY: -(0 + 95 / 2),
+  visualScale: 0.82,
+} as const;
+
+export const OBSTACLE_PUDDLE_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Puddle.png');
+
+/** Puddle presentation skin — wider flat art; gameplay footprint stays 72×72. */
+export const OBSTACLE_PUDDLE_SKIN: ObstacleCrateSkinDefinition = {
+  source: OBSTACLE_PUDDLE_IMAGE_SOURCE,
+  sourceWidth: 138,
+  sourceHeight: 67,
+  spriteWidth: 138,
+  spriteHeight: 67,
+  sourceBodyOffsetX: 33,
+  sourceBodyOffsetY: 0,
+  sourceBodyWidth: 72,
+  sourceBodyHeight: 67,
+  visualOffsetX: -(33 + 72 / 2),
+  visualOffsetY: -(0 + 67 / 2),
+  visualScale: 0.595,
+} as const;
 
 const BASE_OBSTACLE_SPAWN = {
   regions: ['any-lane'] as const,

@@ -11,6 +11,7 @@ import { SpeedBoostLayer } from '../layers/SpeedBoostLayer';
 import { ObstacleLayer } from '../layers/ObstacleLayer';
 import { PlayerLayer } from '../layers/PlayerLayer';
 import { RoadLayer } from '../layers/RoadLayer';
+import { DecorationLayer } from '../layers/DecorationLayer';
 import { UiLayer } from '../layers/UiLayer';
 import { SpeedBoostHud } from '../ui/SpeedBoostHud';
 import { HealthHud } from '../ui/HealthHud';
@@ -37,6 +38,8 @@ function GameScreenComponent() {
     shieldPoolRevision,
     speedBoostRenderBridge,
     speedBoostPoolRevision,
+    decorationRenderBridge,
+    decorationPoolRevision,
   } = useGameEngine(layout);
 
   const rootStyle = useMemo<ViewStyle>(
@@ -68,6 +71,10 @@ function GameScreenComponent() {
         <SpeedBoostLayer renderBridge={speedBoostRenderBridge} poolRevision={speedBoostPoolRevision} />
         <ObstacleLayer renderBridge={obstacleRenderBridge} poolRevision={obstaclePoolRevision} />
         <PlayerLayer motion={playerMotion} snapshot={playerSnapshot} />
+        <DecorationLayer
+          renderBridge={decorationRenderBridge}
+          poolRevision={decorationPoolRevision}
+        />
         <ControlsLayer inputManagerRef={inputManagerRef} />
       </View>
       <UiLayer />

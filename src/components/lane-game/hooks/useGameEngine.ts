@@ -11,6 +11,7 @@ import type { ObstacleRenderBridge } from '@/src/game/systems/obstacle/obstacle-
 import type { CoinRenderBridge } from '@/src/game/systems/coin/coin-motion.types';
 import type { ShieldRenderBridge } from '@/src/game/systems/shield/shield-motion.types';
 import type { SpeedBoostRenderBridge } from '@/src/game/systems/speed-boost/speed-boost-motion.types';
+import type { DecorationRenderBridge } from '@/src/game/systems/decoration/decoration-motion.types';
 import type { PlayerMotionSharedValues } from '@/src/game/systems/player/PlayerMotionController';
 import type { PlayerSnapshot } from '@/src/game/systems/player/PlayerSystem';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
@@ -114,6 +115,23 @@ function buildSpeedBoostRenderBridge(onRevisionChange: () => void): SpeedBoostRe
   };
 }
 
+function buildDecorationRenderBridge(onRevisionChange: () => void): DecorationRenderBridge {
+  const slots = Array.from({ length: POOL_CONSTANTS.MAX_DECORATIONS }, () => ({
+    x: makeMutable(0),
+    y: makeMutable(0),
+    opacity: makeMutable(0),
+    active: false,
+    side: 'left' as DecorationRenderBridge['slots'][number]['side'],
+    scale: 1,
+  }));
+
+  return {
+    slots,
+    revision: { current: 0 },
+    onRevisionChange,
+  };
+}
+
 export interface UseGameEngineResult {
   readonly layout: GameLayout;
   readonly scrollY: ReturnType<typeof useSharedValue<number>>;
@@ -128,6 +146,8 @@ export interface UseGameEngineResult {
   readonly shieldPoolRevision: number;
   readonly speedBoostRenderBridge: SpeedBoostRenderBridge;
   readonly speedBoostPoolRevision: number;
+  readonly decorationRenderBridge: DecorationRenderBridge;
+  readonly decorationPoolRevision: number;
 }
 
 export function useGameLayout(): GameLayout {
@@ -149,6 +169,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
   const [coinPoolRevision, setCoinPoolRevision] = useState(0);
   const [shieldPoolRevision, setShieldPoolRevision] = useState(0);
   const [speedBoostPoolRevision, setSpeedBoostPoolRevision] = useState(0);
+  const [decorationPoolRevision, setDecorationPoolRevision] = useState(0);
 
   const handleObstaclePoolRevision = useCallback(() => {
     setObstaclePoolRevision((value) => value + 1);
@@ -164,6 +185,10 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
 
   const handleSpeedBoostPoolRevision = useCallback(() => {
     setSpeedBoostPoolRevision((value) => value + 1);
+  }, []);
+
+  const handleDecorationPoolRevision = useCallback(() => {
+    setDecorationPoolRevision((value) => value + 1);
   }, []);
 
   const obstacleRenderBridgeRef = useRef<ObstacleRenderBridge | null>(null);
@@ -197,6 +222,13 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
   const speedBoostRenderBridge = speedBoostRenderBridgeRef.current;
   speedBoostRenderBridge.onRevisionChange = handleSpeedBoostPoolRevision;
 
+  const decorationRenderBridgeRef = useRef<DecorationRenderBridge | null>(null);
+  if (!decorationRenderBridgeRef.current) {
+    decorationRenderBridgeRef.current = buildDecorationRenderBridge(handleDecorationPoolRevision);
+  }
+  const decorationRenderBridge = decorationRenderBridgeRef.current;
+  decorationRenderBridge.onRevisionChange = handleDecorationPoolRevision;
+
   const playerMotion = useMemo<PlayerMotionSharedValues>(
     () => ({
       x: playerX,
@@ -229,6 +261,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
       coinRenderBridge,
       shieldRenderBridge,
       speedBoostRenderBridge,
+      decorationRenderBridge,
       audioManager,
     });
     engineRef.current = engine;
@@ -243,7 +276,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
       inputManagerRef.current = null;
       audioManagerRef.current = null;
     };
-  }, [layout, coinRenderBridge, shieldRenderBridge, speedBoostRenderBridge, obstacleRenderBridge, playerMotion, scrollY]);
+  }, [layout, coinRenderBridge, shieldRenderBridge, speedBoostRenderBridge, decorationRenderBridge, obstacleRenderBridge, playerMotion, scrollY]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -279,5 +312,7 @@ export function useGameEngine(layout: GameLayout): UseGameEngineResult {
     shieldPoolRevision,
     speedBoostRenderBridge,
     speedBoostPoolRevision,
+    decorationRenderBridge,
+    decorationPoolRevision,
   };
 }

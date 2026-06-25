@@ -53,6 +53,14 @@ export type {
   SpeedBoostRenderSlot,
 } from './speed-boost/speed-boost-motion.types';
 
+export type { DecorationSystemContract } from './decoration/decoration.contract';
+export { DecorationSystem } from './decoration/DecorationSystem';
+export type {
+  DecorationRenderBridge,
+  DecorationRenderSlot,
+  DecorationSide,
+} from './decoration/decoration-motion.types';
+
 export type { AudioManagerContract } from './audio/audio.contract';
 export { AudioManager } from './audio/AudioManager';
 export { InputManagerAudioBridge } from './audio/InputManagerAudioBridge';

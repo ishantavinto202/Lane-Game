@@ -49,21 +49,7 @@ Phase 3 adds lane hazards, collision detection, distance-based scoring, and best
 
 ### What You Can Run Today
 
-- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80 **high-contrast debug render**, Puddle 72×72 red circle)
-
-### Temporary Barrier Debug Test (active)
-
-Barrier visibility confirmation is active — **spawn logic unchanged**:
-
-| Property | Debug value |
-|----------|-------------|
-| Size | 96×80 |
-| Fill | `#FF00FF` (bright magenta) |
-| Border | 4px black |
-| Label | `BARRIER` |
-| Stripes | Diagonal black bands (Barrier only) |
-
-**How to verify:** Play 2–3 minutes. Dev logs now trace obstacle lifecycle with `[ObstacleCreated]`, `[ObstacleReused]`, `[ObstacleActivated]`, `[ObstacleDeactivated]`, `[ObstacleRendered]`, and `[RenderSlotState]` entries so Barrier can be followed from pool slot assignment through render bridge activation and cleanup. Obstacle render bridge metadata is stored as top-level slot fields so Reanimated worklets only receive shared motion values.
+- Obstacles spawn in lanes 0–2 (Tire 64×64, Cone 48×48, Crate 96×96, Barrier 96×80, Puddle 72×72 — all voxel PNGs)
 - **Spawn bag** holds one of each obstacle type (Tire, Cone, Crate, Barrier, Puddle), shuffled on creation and on each refill; every five successful pulls depletes exactly one full bag with no type starvation
 - **Opening showcase cadence** temporarily uses a 900ms obstacle interval for the first 4 successful spawns, introducing Tire, Cone, Crate, and Barrier early while preserving natural vertical spacing; Puddle enters on the fifth bag pull; normal difficulty-based spawn timing resumes afterward
 - Failed placements are retried via `returnType` before the next bag pull, so a blocked type is not lost or skipped permanently
@@ -413,6 +399,80 @@ spriteY = playerWorldY + visualOffsetY
 
 The current default uses a `116x140` sprite, `visualOffsetX: -76`, `visualOffsetY: -70`, and the unchanged `60x110` body collision box at `offsetX: -30`, `offsetY: -55`. Shadow pixels never affect lane centering, obstacle hits, shield pickups, coin collection, or any other gameplay collision.
 
+### Crate Obstacle Sprite Alignment
+
+The Crate obstacle keeps its **96×96** gameplay footprint, spawn dimensions, and `76×76` collision box unchanged. Only the presentation layer swaps to `assets/voxel/Crate.png` (`148×112`, baked shadow on the left).
+
+`OBSTACLE_CRATE_SKIN` in `src/game/assets/definitions/obstacle.assets.ts` defines:
+
+- `sourceBodyOffsetX: 56` / `sourceBodyOffsetY: 0` — original 92×100 body origin inside the merged PNG
+- `visualOffsetX: -102` / `visualOffsetY: -50` — places the visible crate body at the same world center as before
+- Render formula: `spriteX = obstacleWorldX + visualOffsetX`, `spriteY = obstacleWorldY + visualOffsetY`
+
+Shadow pixels extend outside the 96×96 gameplay box but move with the crate because they are baked into the PNG. ObstacleSystem, spawn logic, render bridge, pooling, and collision code are untouched.
+
+### Cone Obstacle Sprite Alignment
+
+The Cone obstacle keeps its **48×48** gameplay footprint, spawn dimensions, and `32×36` collision box unchanged. Only the presentation layer swaps to `assets/voxel/Cone.png` (`138×118`, baked shadow on the left).
+
+`OBSTACLE_CONE_SKIN` in `src/game/assets/definitions/obstacle.assets.ts` defines:
+
+- `sourceBodyOffsetX: 53` / `sourceBodyOffsetY: 0` — original 85×92 body origin inside the merged PNG
+- `visualOffsetX: -95.5` / `visualOffsetY: -46` — places the visible cone body at the same world center as before
+- Render formula: `spriteX = obstacleWorldX + visualOffsetX`, `spriteY = obstacleWorldY + visualOffsetY`
+
+Shadow pixels extend outside the 48×48 gameplay box but move with the cone because they are baked into the PNG. ObstacleSystem, spawn logic, render bridge, pooling, and collision code are untouched.
+
+### Barrier Obstacle Sprite Alignment
+
+The Barrier obstacle keeps its **96×80** gameplay footprint, spawn dimensions, and `76×56` collision box unchanged. Only the presentation layer swaps to `assets/voxel/Barrier.png` (`153×158`, baked shadow included).
+
+`OBSTACLE_BARRIER_SKIN` in `src/game/assets/definitions/obstacle.assets.ts` defines:
+
+- `sourceBodyOffsetX: 13` / `sourceBodyOffsetY: 0` — original 141×135 body origin inside the merged PNG
+- `visualOffsetX: -83.5` / `visualOffsetY: -67.5` — places the visible barrier body at the same world center as before
+- Render formula: `spriteX = obstacleWorldX + visualOffsetX`, `spriteY = obstacleWorldY + visualOffsetY`
+
+Shadow pixels extend outside the 96×80 gameplay box but move with the barrier because they are baked into the PNG. ObstacleSystem, spawn logic, render bridge, pooling, and collision code are untouched.
+
+### Tire Obstacle Sprite Alignment
+
+The Tire obstacle keeps its **64×64** gameplay footprint, spawn dimensions, and `48×48` collision box unchanged. Only the presentation layer swaps to `assets/voxel/Tyre.png` (`144×95`, baked shadow on the left).
+
+`OBSTACLE_TIRE_SKIN` in `src/game/assets/definitions/obstacle.assets.ts` defines:
+
+- `sourceBodyOffsetX: 20` / `sourceBodyOffsetY: 0` — original 124×95 body origin inside the merged PNG
+- `visualOffsetX: -82` / `visualOffsetY: -47.5` — places the visible tire body at the same world center as before
+- Render formula: `spriteX = obstacleWorldX + visualOffsetX`, `spriteY = obstacleWorldY + visualOffsetY`
+
+Shadow pixels extend outside the 64×64 gameplay box but move with the tire because they are baked into the PNG. ObstacleSystem, spawn logic, render bridge, pooling, and collision code are untouched.
+
+### Puddle Obstacle Sprite Alignment
+
+The Puddle obstacle keeps its **72×72** gameplay footprint, spawn dimensions, and `54×54` collision box unchanged. Only the presentation layer swaps to `assets/voxel/Puddle.png` (`138×67`, flat ground art).
+
+`OBSTACLE_PUDDLE_SKIN` in `src/game/assets/definitions/obstacle.assets.ts` defines:
+
+- `sourceBodyOffsetX: 33` / `sourceBodyOffsetY: 0` — 72×67 body region centered inside the merged PNG
+- `visualOffsetX: -69` / `visualOffsetY: -33.5` — places the visible puddle body at the same world center as before
+- Render formula: `spriteX = obstacleWorldX + visualOffsetX`, `spriteY = obstacleWorldY + visualOffsetY`
+
+Wider art extends outside the 72×72 gameplay box but moves with the puddle. ObstacleSystem, spawn logic, render bridge, pooling, and collision code are untouched.
+
+### Obstacle Visual Scale (presentation only)
+
+Each obstacle skin defines a `visualScale` multiplier applied in `ObstacleSprite` via `transform: [{ scale }]`. Scaling uses the sprite view center, which matches the body center and obstacle world position — shadow offsets and alignment are unchanged.
+
+| Obstacle | `visualScale` | Rendered size (W×H px) | Gameplay footprint |
+|----------|---------------|------------------------|-------------------|
+| Tire | **0.82** | 118 × 78 | 64×64 unchanged |
+| Cone | **0.64** | 88 × 76 | 48×48 unchanged |
+| Crate | **0.72** | 107 × 81 | 96×96 unchanged |
+| Barrier | **0.54** | 83 × 85 | 96×80 unchanged |
+| Puddle | **0.595** | 82 × 40 | 72×72 unchanged |
+
+Collision boxes, spawn dimensions, lane positions, and spacing logic are untouched.
+
 ### Retry Integration
 
 ```
@@ -639,8 +699,32 @@ GameEngine.tick()
 | **AudioManager** | Preloaded SFX (lane, collision, game over) | ✅ |
 | **Persistence** | Best score, total runs, total distance | ✅ |
 | **Zustand store** | Status + score + health + run coins + run stats + damage flash | ✅ |
+| **DecorationSystem** | Cosmetic roadside trees on grass strips (pooled, no collision) | ✅ |
 
-**Not implemented yet:** decorations, swipe gestures, settings persistence UI.
+**Not implemented yet:** swipe gestures, settings persistence UI.
+
+### Roadside Tree Decorations (cosmetic only)
+
+```txt
+src/game/systems/decoration/
+  DecorationSystem.ts              Spawn, pool, move, despawn (grass strips only)
+  decoration-motion.types.ts       Dedicated render bridge (32 slots)
+src/game/assets/definitions/
+  decoration.assets.ts             TREE_SKIN + Tree.png (233×209 source)
+src/game/config/
+  decoration.config.ts             spawnIntervalMs: 400, minVerticalGapPx: 175, base 234×218
+src/components/lane-game/
+  decoration/TreeSprite.tsx          Memoized tree render (skin + instance scale)
+  layers/DecorationLayer.tsx         Top of world stack in GameScreen (above player)
+```
+
+- **Pre-seeded at initialize:** `seedInitialTrees()` fills the full Y range (`spawnY` → `despawnY`) before countdown so the roadside is populated from frame one; runtime spawn/despawn continues normally after
+- Trees spawn on **left/right grass only** — never on the road
+- Trunk bounds clamped via `TREE_SKIN.trunkHalfWidthPx` inside the 56px grass band — canopy may overflow; left-side trees shifted **`+16px`** toward the road via `leftTreeRoadwardOffsetPx` (trunk re-clamped to grass)
+- Default render size **234×218** (+30% vs 180×168) with **±10%** instance scale variation (`0.9–1.1`)
+- Density tuning: **`spawnIntervalMs: 400`**, **`minVerticalGapPx: 175`** (~1.75× spawn rate vs 700ms config; ~1.4× more roadside trees on screen)
+- **No collision**, no obstacle/coin/shield interaction, separate render bridge from obstacles
+- ObstacleSystem, spawn bag, obstacle render bridge, pooling, and collision code are **untouched**
 
 ### Lane System
 
@@ -715,12 +799,14 @@ Player position uses Reanimated shared values (`playerX`, `playerY`, `playerTilt
 1. Left / right **grass**
 2. Left / right **sidewalk**
 3. **Road surface** — voxel PNG strips or procedural fill (+ lane dividers when voxel off)
-4. **Obstacles** (pooled, between road and player)
-5. **Player** (animated X + tilt)
-6. **UI** — status + score badge (top center)
-7. **PauseButton** — top-right Pause / Resume
-8. **GameOverOverlay** — score, best, Play Again
-9. **Controls** — left/right arrows, bottom corners, safe area inset
+4. **Pickups** — coins, shields, speed boosts
+5. **Obstacles** (pooled)
+6. **Player** (animated X + tilt)
+7. **Roadside trees** (DecorationLayer — cosmetic, top of world stack)
+8. **Controls** (lane buttons)
+9. **UI** — status + score badge (top center)
+10. **PauseButton** — top-right Pause / Resume
+11. **GameOverOverlay** — score, best, Play Again
 
 ### Performance Decisions (Phase 2)
 

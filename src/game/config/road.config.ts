@@ -88,7 +88,7 @@ export const ROAD_SCROLL = {
   roadMultiplier: 1,
   sidewalkMultiplier: 1,
   grassMultiplier: 0.85,
-  decorationMultiplier: 0.85,
+  decorationMultiplier: 1.0,
   parallaxEnabled: true,
 } as const;
 

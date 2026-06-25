@@ -1,9 +1,25 @@
-import { memo, useEffect, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { memo, useMemo } from 'react';
+import { Image, Text } from 'react-native';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 import { getAssetDefinition } from '@/src/game/assets';
+import {
+  OBSTACLE_BARRIER_SKIN,
+  OBSTACLE_CONE_SKIN,
+  OBSTACLE_CRATE_SKIN,
+  OBSTACLE_PUDDLE_SKIN,
+  OBSTACLE_TIRE_SKIN,
+  type ObstacleCrateSkinDefinition,
+} from '@/src/game/assets/definitions/obstacle.assets';
 import type { ObstacleAssetId } from '@/src/game/types';
+
+const SKINNED_OBSTACLE_SKINS: Partial<Record<ObstacleAssetId, ObstacleCrateSkinDefinition>> = {
+  OBSTACLE_TIRE: OBSTACLE_TIRE_SKIN,
+  OBSTACLE_CRATE: OBSTACLE_CRATE_SKIN,
+  OBSTACLE_CONE: OBSTACLE_CONE_SKIN,
+  OBSTACLE_BARRIER: OBSTACLE_BARRIER_SKIN,
+  OBSTACLE_PUDDLE: OBSTACLE_PUDDLE_SKIN,
+};
 
 export interface ObstacleSpriteProps {
   readonly x: SharedValue<number>;
@@ -24,51 +40,40 @@ function ObstacleSpriteComponent({
   width,
   height,
 }: ObstacleSpriteProps) {
+  void renderIndex;
+
   const asset = useMemo(() => getAssetDefinition(assetId), [assetId]);
   const halfWidth = width / 2;
   const halfHeight = height / 2;
-  const isTireDebug = assetId === 'OBSTACLE_TIRE';
-  const isBarrierDebug = assetId === 'OBSTACLE_BARRIER';
-
-  useEffect(() => {
-    if (!__DEV__ || !isBarrierDebug) {
-      return;
-    }
-
-    console.log(
-      `[ObstacleRendered] assetId=${assetId} renderIndex=${renderIndex} width=${width} height=${height}`,
-    );
-  }, [assetId, height, isBarrierDebug, renderIndex, width]);
-
-  const debugStripes = useMemo(
-    () =>
-      isBarrierDebug || isTireDebug
-        ? [-48, -24, 0, 24, 48].map((offset) => (
-            <View
-              key={`obstacle-stripe-${offset}`}
-              style={{
-                position: 'absolute',
-                top: -8,
-                bottom: -8,
-                left: offset,
-                width: 10,
-                backgroundColor: '#000000',
-                transform: [{ rotate: '-32deg' }],
-              }}
-            />
-          ))
-        : null,
-    [isBarrierDebug, isTireDebug],
-  );
+  const skin = SKINNED_OBSTACLE_SKINS[assetId];
+  const isSkinnedObstacle = skin !== undefined;
+  const skinVisualOffsetX = skin?.visualOffsetX ?? 0;
+  const skinVisualOffsetY = skin?.visualOffsetY ?? 0;
+  const skinSpriteWidth = skin?.spriteWidth ?? width;
+  const skinSpriteHeight = skin?.spriteHeight ?? height;
+  const skinVisualScale = skin?.visualScale ?? 1;
 
   const animatedStyle = useAnimatedStyle(() => ({
     position: 'absolute',
-    left: x.value - halfWidth,
-    top: y.value - halfHeight,
-    width,
-    height,
+    left: isSkinnedObstacle ? x.value + skinVisualOffsetX : x.value - halfWidth,
+    top: isSkinnedObstacle ? y.value + skinVisualOffsetY : y.value - halfHeight,
+    width: isSkinnedObstacle ? skinSpriteWidth : width,
+    height: isSkinnedObstacle ? skinSpriteHeight : height,
     opacity: opacity.value,
+    transform: isSkinnedObstacle ? [{ scale: skinVisualScale }] : [],
   }));
+
+  if (isSkinnedObstacle && skin) {
+    return (
+      <Animated.View pointerEvents="none" style={animatedStyle}>
+        <Image
+          source={skin.source}
+          style={{ width: skin.spriteWidth, height: skin.spriteHeight }}
+          resizeMode="contain"
+        />
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View
@@ -86,11 +91,10 @@ function ObstacleSpriteComponent({
         },
       ]}
     >
-      {debugStripes}
       <Text
         style={{
           color: '#FFFFFF',
-          fontSize: isBarrierDebug || isTireDebug ? 10 : 9,
+          fontSize: 9,
           fontWeight: '700',
           zIndex: 1,
         }}

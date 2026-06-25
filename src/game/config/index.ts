@@ -18,6 +18,8 @@ export {
   SPAWN_CONFIG,
 } from './game.config';
 
+export { DECORATION_CONFIG } from './decoration.config';
+
 export {
   GRASS_IMAGE,
   ROAD_COLORS,
