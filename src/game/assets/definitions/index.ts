@@ -1,4 +1,9 @@
 export { COIN_ASSET } from './coin.assets';
+export {
+  HEART_EMPTY_IMAGE_SOURCE,
+  HEART_FULL_IMAGE_SOURCE,
+  HEART_HUD_ICON,
+} from './heart.assets';
 export { SHIELD_ASSET, SHIELD_IMAGE_SOURCE } from './shield.assets';
 export { SPEED_BOOST_ASSET, SPEED_BOOST_IMAGE_SOURCE } from './speed-boost.assets';
 
@@ -11,12 +16,23 @@ export {
   OBSTACLE_TIRE_ASSET,
 } from './obstacle.assets';
 
-export { PLAYER_CAR_ASSET } from './player.assets';
+export {
+  PLAYER_CAR_ASSET,
+  PLAYER_CAR_DEFAULT,
+  PLAYER_CAR_IMAGE_SOURCE,
+} from './player.assets';
 
 export { ROAD_ASSETS, ROAD_ASSET_MAP } from './road.assets';
 export {
+  GRASS_IMAGE_SOURCE,
   GRASS_TILE_ASSET,
   ROAD_LANE_DIVIDER_ASSET,
+  ROAD_LOOP_A_IMAGE_SOURCE,
+  ROAD_LOOP_B_IMAGE_SOURCE,
+  ROAD_START_IMAGE_SOURCE,
   ROAD_SURFACE_ASSET,
+  SIDEWALK_LEFT_IMAGE_SOURCE,
+  SIDEWALK_RIGHT_IMAGE_SOURCE,
   SIDEWALK_TILE_ASSET,
+  pickLoopRoadImageSource,
 } from './road.assets';

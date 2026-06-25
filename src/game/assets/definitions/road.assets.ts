@@ -1,12 +1,40 @@
-import { ROAD_COLORS, ROAD_TILE } from '../../config';
+import type { ImageSourcePropType } from 'react-native';
+
+import { ROAD_COLORS, ROAD_IMAGE, ROAD_TILE, GRASS_IMAGE } from '../../config';
 import { RenderLayer } from '../../types';
 import type { RoadAssetDefinition } from '../../types';
+
+/** Start-of-run road strip — 225×869 native, scaled to 300×1159 in-game. */
+export const ROAD_START_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/R_1.png');
+
+/** Loop road strip variant A — randomized after the start segment. */
+export const ROAD_LOOP_A_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/R_2.png');
+
+/** Loop road strip variant B — randomized after the start segment. */
+export const ROAD_LOOP_B_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/R_3.png');
+
+/** Left sidewalk strip — 40×1159, aligned to road segment height. */
+export const SIDEWALK_LEFT_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Side_L.png');
+
+/** Right sidewalk strip — 40×1159, aligned to road segment height. */
+export const SIDEWALK_RIGHT_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Side_R.png');
+
+/** Grass strip — native 28×843, scaled to 56×1686 on both sides. */
+export const GRASS_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/voxel/Grass.png');
+
+const ROAD_LOOP_SOURCES = [ROAD_LOOP_A_IMAGE_SOURCE, ROAD_LOOP_B_IMAGE_SOURCE] as const;
+
+/** Deterministic pseudo-random loop pick — stable per segment index across re-renders. */
+export function pickLoopRoadImageSource(loopIndex: number): ImageSourcePropType {
+  const mixed = (loopIndex * 1103515245 + 12345) >>> 0;
+  return ROAD_LOOP_SOURCES[mixed % ROAD_LOOP_SOURCES.length] ?? ROAD_LOOP_A_IMAGE_SOURCE;
+}
 
 /** Main drivable road surface strip. */
 export const ROAD_SURFACE_ASSET: RoadAssetDefinition = {
   id: 'ROAD_SURFACE',
-  width: 300,
-  height: 120,
+  width: ROAD_IMAGE.displayWidth,
+  height: ROAD_IMAGE.segmentHeight,
   anchor: 'top-left',
   layer: RenderLayer.Road,
   collidable: false,
@@ -36,7 +64,7 @@ export const ROAD_LANE_DIVIDER_ASSET: RoadAssetDefinition = {
 export const SIDEWALK_TILE_ASSET: RoadAssetDefinition = {
   id: 'SIDEWALK_TILE',
   width: ROAD_TILE.sidewalkTileSize,
-  height: ROAD_TILE.sidewalkTileSize,
+  height: ROAD_IMAGE.segmentHeight,
   anchor: 'top-left',
   layer: RenderLayer.Sidewalk,
   collidable: false,
@@ -53,8 +81,8 @@ export const SIDEWALK_TILE_ASSET: RoadAssetDefinition = {
 /** Repeating grass tile — color chosen randomly from palette at spawn. */
 export const GRASS_TILE_ASSET: RoadAssetDefinition = {
   id: 'GRASS_TILE',
-  width: ROAD_TILE.grassTileSize,
-  height: ROAD_TILE.grassTileSize,
+  width: GRASS_IMAGE.displayWidth,
+  height: GRASS_IMAGE.segmentHeight,
   anchor: 'top-left',
   layer: RenderLayer.Grass,
   collidable: false,

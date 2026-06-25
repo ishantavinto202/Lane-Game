@@ -25,6 +25,35 @@ export const ROAD_LAYOUT = {
   dividerGapLength: 24,
 } as const;
 
+/** Voxel road strip bitmaps — native 225×869, displayed at game road width (300). */
+export const ROAD_IMAGE = {
+  nativeWidth: 225,
+  nativeHeight: 869,
+  get displayWidth(): number {
+    return ROAD_WORLD.roadWidth;
+  },
+  get segmentHeight(): number {
+    return Math.round(
+      (this.nativeHeight * this.displayWidth) / this.nativeWidth,
+    );
+  },
+  /** Pre-built world segments after R_1 — enough for ~7 min at base scroll speed. */
+  maxWorldSegments: 120,
+  useVoxelArtwork: true,
+} as const;
+
+/** Voxel grass strip — native 28×843, displayed at grass lane width 56 (segment height 1686). */
+export const GRASS_IMAGE = {
+  nativeWidth: 28,
+  nativeHeight: 843,
+  displayWidth: ROAD_LAYOUT.grassWidth,
+  get segmentHeight(): number {
+    return Math.round(
+      (this.nativeHeight * this.displayWidth) / this.nativeWidth,
+    );
+  },
+} as const;
+
 /** Tile dimensions for repeating sidewalk/grass patterns. */
 export const ROAD_TILE = {
   sidewalkTileSize: 40,

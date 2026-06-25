@@ -19,8 +19,10 @@ export {
 } from './game.config';
 
 export {
+  GRASS_IMAGE,
   ROAD_COLORS,
   ROAD_CONTROLS,
+  ROAD_IMAGE,
   ROAD_LAYOUT,
   ROAD_PLAYER,
   ROAD_SCROLL,

@@ -1,5 +1,5 @@
-import { memo, useCallback, useEffect, useMemo } from 'react';
-import { Text } from 'react-native';
+import { memo, useCallback, useEffect } from 'react';
+import { Image, StyleSheet } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -9,23 +9,25 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { getAssetDefinition } from '@/src/game/assets';
+import { PLAYER_CAR_DEFAULT } from '@/src/game/assets';
 import { HEALTH_CONFIG } from '@/src/game/config';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import type { PlayerMotionSharedValues } from '@/src/game/systems/player/PlayerMotionController';
 import type { PlayerSnapshot } from '@/src/game/systems/player/PlayerSystem';
+
+const PLAYER_CAR_VISUAL_OFFSET_X = PLAYER_CAR_DEFAULT.visualOffsetX;
+const PLAYER_CAR_VISUAL_OFFSET_Y = PLAYER_CAR_DEFAULT.visualOffsetY;
+const PLAYER_CAR_SPRITE_WIDTH = PLAYER_CAR_DEFAULT.spriteWidth;
+const PLAYER_CAR_SPRITE_HEIGHT = PLAYER_CAR_DEFAULT.spriteHeight;
 
 export interface PlayerCarProps {
   readonly snapshot: PlayerSnapshot;
   readonly motion: PlayerMotionSharedValues;
 }
 
-function PlayerCarComponent({ snapshot, motion }: PlayerCarProps) {
+function PlayerCarComponent({ motion }: PlayerCarProps) {
   const damageBlinkNonce = useGameStore(gameStoreSelectors.damageBlinkNonce);
   const health = useGameStore(gameStoreSelectors.health);
-  const asset = useMemo(() => getAssetDefinition('PLAYER_CAR'), []);
-  const halfWidth = snapshot.width / 2;
-  const halfHeight = snapshot.height / 2;
   const blinkOpacity = useSharedValue(1);
 
   const runDamageBlink = useCallback(() => {
@@ -59,10 +61,10 @@ function PlayerCarComponent({ snapshot, motion }: PlayerCarProps) {
 
   const animatedStyle = useAnimatedStyle(() => ({
     position: 'absolute',
-    left: motion.x.value - halfWidth,
-    top: motion.y.value - halfHeight,
-    width: snapshot.width,
-    height: snapshot.height,
+    left: motion.x.value + PLAYER_CAR_VISUAL_OFFSET_X,
+    top: motion.y.value + PLAYER_CAR_VISUAL_OFFSET_Y,
+    width: PLAYER_CAR_SPRITE_WIDTH,
+    height: PLAYER_CAR_SPRITE_HEIGHT,
     opacity: blinkOpacity.value,
     transform: [{ rotateZ: `${motion.tilt.value}deg` }],
   }));
@@ -70,29 +72,18 @@ function PlayerCarComponent({ snapshot, motion }: PlayerCarProps) {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        animatedStyle,
-        {
-          backgroundColor: asset.visual.primaryColor,
-          borderColor: asset.visual.borderColor,
-          borderWidth: asset.visual.borderWidth ?? 0,
-          borderRadius: asset.visual.cornerRadius ?? 0,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-      ]}
+      style={animatedStyle}
     >
-      <Text
-        style={{
-          color: '#FFFFFF',
-          fontSize: 10,
-          fontWeight: '700',
-        }}
-      >
-        {asset.visual.label}
-      </Text>
+      <Image source={PLAYER_CAR_DEFAULT.source} style={styles.sprite} resizeMode="contain" />
     </Animated.View>
   );
 }
 
 export const PlayerCar = memo(PlayerCarComponent);
+
+const styles = StyleSheet.create({
+  sprite: {
+    width: PLAYER_CAR_SPRITE_WIDTH,
+    height: PLAYER_CAR_SPRITE_HEIGHT,
+  },
+});

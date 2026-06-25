@@ -2,10 +2,13 @@ import { memo, useMemo } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
-import { ROAD_COLORS, ROAD_TILE } from '@/src/game/config';
+import { ROAD_COLORS, ROAD_IMAGE, ROAD_TILE } from '@/src/game/config';
 import type { RoadRegions } from '@/src/game/utils/layout';
 
 import { InfiniteTileColumn } from './InfiniteTileColumn';
+import { GrassImageColumn } from './GrassImageColumn';
+import { RoadImageColumn } from './RoadImageColumn';
+import { SidewalkImageColumn } from './SidewalkImageColumn';
 
 export interface GrassStripProps {
   readonly side: 'left' | 'right';
@@ -16,8 +19,20 @@ export interface GrassStripProps {
 
 function GrassStripComponent({ side, regions, screenHeight, scrollY }: GrassStripProps) {
   const region = side === 'left' ? regions.leftGrass : regions.rightGrass;
-  const sideSeed = side === 'left' ? 0 : 2;
   const colors = useMemo(() => ROAD_TILE.grassColorChoices, []);
+  const sideSeed = side === 'left' ? 0 : 2;
+
+  if (ROAD_IMAGE.useVoxelArtwork) {
+    return (
+      <GrassImageColumn
+        side={side}
+        x={region.x}
+        width={region.width}
+        screenHeight={screenHeight}
+        scrollY={scrollY}
+      />
+    );
+  }
 
   return (
     <InfiniteTileColumn
@@ -51,6 +66,18 @@ function SidewalkStripComponent({
   const region = side === 'left' ? regions.leftSidewalk : regions.rightSidewalk;
   const colors = useMemo(() => ROAD_TILE.sidewalkColorPattern, []);
 
+  if (ROAD_IMAGE.useVoxelArtwork) {
+    return (
+      <SidewalkImageColumn
+        side={side}
+        x={region.x}
+        width={region.width}
+        screenHeight={screenHeight}
+        scrollY={scrollY}
+      />
+    );
+  }
+
   return (
     <InfiniteTileColumn
       x={region.x}
@@ -69,9 +96,21 @@ export const SidewalkStrip = memo(SidewalkStripComponent);
 export interface RoadSurfaceProps {
   readonly regions: RoadRegions;
   readonly screenHeight: number;
+  readonly scrollY: SharedValue<number>;
 }
 
-function RoadSurfaceComponent({ regions, screenHeight }: RoadSurfaceProps) {
+function RoadSurfaceComponent({ regions, screenHeight, scrollY }: RoadSurfaceProps) {
+  if (ROAD_IMAGE.useVoxelArtwork) {
+    return (
+      <RoadImageColumn
+        x={regions.road.x}
+        width={regions.road.width}
+        screenHeight={screenHeight}
+        scrollY={scrollY}
+      />
+    );
+  }
+
   return (
     <View
       pointerEvents="none"

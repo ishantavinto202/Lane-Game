@@ -4,6 +4,7 @@ import type { SharedValue } from 'react-native-reanimated';
 
 import type { GameLayout } from '@/src/game/types';
 import { getWorldCameraRenderHeight } from '@/src/game/constants';
+import { ROAD_IMAGE } from '@/src/game/config';
 import { getRoadRegions } from '@/src/game/utils/layout';
 
 import {
@@ -51,14 +52,16 @@ function RoadLayerComponent({ layout, scrollY }: RoadLayerProps) {
         screenHeight={renderHeight}
         scrollY={scrollY}
       />
-      <RoadSurface regions={regions} screenHeight={renderHeight} />
-      <LaneDividers
-        layoutRoadLeft={layout.roadLeft}
-        layoutRoadWidth={layout.roadWidth}
-        laneWidth={layout.laneWidth}
-        screenHeight={renderHeight}
-        scrollY={scrollY}
-      />
+      <RoadSurface regions={regions} screenHeight={renderHeight} scrollY={scrollY} />
+      {!ROAD_IMAGE.useVoxelArtwork ? (
+        <LaneDividers
+          layoutRoadLeft={layout.roadLeft}
+          layoutRoadWidth={layout.roadWidth}
+          laneWidth={layout.laneWidth}
+          screenHeight={renderHeight}
+          scrollY={scrollY}
+        />
+      ) : null}
     </View>
   );
 }

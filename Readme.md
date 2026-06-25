@@ -224,7 +224,7 @@ src/game/systems/health/
   HealthSystem.ts                  Health pool + invulnerability timer
   health.contract.ts
 src/components/lane-game/ui/
-  HealthHud.tsx                    Top-center ❤️ health display (z-index above game world)
+  HealthHud.tsx                    Top-center heart PNGs + shield icon (z-index above game world)
 ```
 
 ### Damage Flow
@@ -395,6 +395,23 @@ rAF tick →
 10. **HealthHud** — hearts + shield icon (top center)
 11. **PauseButton** — top-right
 12. **PauseOverlay** / **CountdownOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
+
+### Player Sprite Alignment
+
+The player motion anchor is the vehicle body center, not the raw PNG center. The default player skin is defined in `src/game/assets/definitions/player.assets.ts` as `PLAYER_CAR_DEFAULT`, including:
+
+- `spriteWidth` / `spriteHeight` for the rendered PNG.
+- `visualOffsetX` / `visualOffsetY` for placing the baked-shadow sprite from the body-centered world position.
+- `collisionBox` for the vehicle body only.
+
+`assets/voxel/CAR.png` includes the car and baked shadow in one image. Because the shadow extends left of the body, `PlayerCar` renders it as:
+
+```txt
+spriteX = playerWorldX + visualOffsetX
+spriteY = playerWorldY + visualOffsetY
+```
+
+The current default uses a `116x140` sprite, `visualOffsetX: -76`, `visualOffsetY: -70`, and the unchanged `60x110` body collision box at `offsetX: -30`, `offsetY: -55`. Shadow pixels never affect lane centering, obstacle hits, shield pickups, coin collection, or any other gameplay collision.
 
 ### Retry Integration
 
@@ -634,8 +651,37 @@ GameEngine.tick()
 | Right | 2 | Right boundary — further right taps ignored |
 
 - Lane width: **100px** · Road width: **300px** · Player car: **80×140**
+- **Voxel road strips** — `assets/voxel/R_1.png` (start), `R_2.png` / `R_3.png` (loop); native **225×869**, rendered at **300×1159** per segment; lane markings baked in (procedural dividers off when `ROAD_IMAGE.useVoxelArtwork` is true)
 - Centers computed once via `createGameLayout()` → `LaneSystem.getCenterX()`
 - `PlayerSystem.tryLaneChange()` uses `resolveLaneChange()` — single source of lane math
+
+### Voxel Road, Sidewalk & Grass Art (active test)
+
+```txt
+assets/voxel/
+  R_1.png                            Start road segment (once per run)
+  R_2.png                            Road loop variant A
+  R_3.png                            Road loop variant B
+  Side_L.png                         Left sidewalk (40×1159)
+  Side_R.png                         Right sidewalk (40×1159)
+  Grass.png                          Left/right grass (native 28×843 → display 56×1686)
+src/components/lane-game/road/
+  RoadImageColumn.tsx                Road scroll column
+  SidewalkImageColumn.tsx            Left/right sidewalk scroll columns
+  GrassImageColumn.tsx               Left/right grass scroll columns
+src/game/assets/definitions/
+  road.assets.ts                     Road + sidewalk + grass image sources
+src/game/config/
+  road.config.ts                     ROAD_IMAGE + GRASS_IMAGE sizing
+```
+
+**Scroll chain:** `RoadSystem.updateScroll()` → `scrollY` shared value → `RoadImageColumn` / `SidewalkImageColumn` / `GrassImageColumn` apply `translateY: +scrollY` with segments stacked upward.
+
+- `R_1` plays once at run start; loop tiles (`R_2` / `R_3`) never repeat the start PNG after segment index 0
+- Sidewalks: `Side_L` / `Side_R` at **40×1159** (matches road segment height)
+- Grass: `Grass.png` on both sides — native **28×843**, rendered at **56×1686**
+- Procedural lane dividers disabled while `ROAD_IMAGE.useVoxelArtwork === true`
+- Toggle `ROAD_IMAGE.useVoxelArtwork` to `false` in `road.config.ts` to revert to procedural strips
 
 ### Input Architecture
 
@@ -668,7 +714,7 @@ Player position uses Reanimated shared values (`playerX`, `playerY`, `playerTilt
 
 1. Left / right **grass**
 2. Left / right **sidewalk**
-3. **Road surface** + lane dividers
+3. **Road surface** — voxel PNG strips or procedural fill (+ lane dividers when voxel off)
 4. **Obstacles** (pooled, between road and player)
 5. **Player** (animated X + tilt)
 6. **UI** — status + score badge (top center)
