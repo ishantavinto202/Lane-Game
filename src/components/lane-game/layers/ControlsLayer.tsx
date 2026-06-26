@@ -1,4 +1,3 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { CaretLeft, CaretRight } from 'phosphor-react-native';
 import { memo, useCallback, useMemo, type RefObject } from 'react';
 import { useWindowDimensions, View, type ViewStyle } from 'react-native';
@@ -18,7 +17,6 @@ export interface ControlsLayerProps {
 function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const status = useGameStore(gameStoreSelectors.status);
   const isPlaying = status === GameStatus.Playing;
   const isGameOver = status === GameStatus.GameOver;
@@ -38,7 +36,7 @@ function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
 
   const rowStyle = useMemo<ViewStyle>(() => {
     const playableTop = insets.top;
-    const playableBottom = windowHeight - tabBarHeight;
+    const playableBottom = windowHeight - insets.bottom;
     const playableHeight = playableBottom - playableTop;
     const rowTop =
       playableTop + playableHeight / 2 - CONTROLS_CONSTANTS.BUTTON_MIN_SIZE / 2;
@@ -52,7 +50,7 @@ function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
       alignItems: 'center',
       justifyContent: 'space-between',
     };
-  }, [insets.top, tabBarHeight, windowHeight]);
+  }, [insets.top, insets.bottom, windowHeight]);
 
   const handleMoveLeft = useCallback(() => {
     inputManagerRef.current?.requestLaneChange('left', 'button');

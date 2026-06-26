@@ -4,6 +4,25 @@ Expo SDK 53 · React Native 0.79 · Reanimated · Zustand · NativeWind
 
 ---
 
+## App Navigation
+
+The lane game runs **outside** the tab navigator for fullscreen, professional mobile-game behavior (no tab bar, no safe-area conflicts).
+
+```txt
+app/
+├── _layout.tsx          Root stack
+├── lane-game.tsx        Fullscreen game route → GameScreen
+└── (tabs)/
+    ├── _layout.tsx      Tab navigator (Home, Tab Two)
+    └── index.tsx        Home landing → router.push('/lane-game')
+```
+
+- **Home tab** (`/(tabs)`) — landing with **Play** button
+- **Game route** (`/lane-game`) — pushed onto root stack; no bottom tab bar
+- Launch game: `router.push('/lane-game')`
+
+---
+
 ## Phase 1 — Playable World Foundation (Complete)
 
 Phase 1 delivers the scalable architecture and a **rendered, scrollable world** with the player car in the center lane.
@@ -22,7 +41,7 @@ Phase 2 adds on-screen controls and smooth lane-based movement. Road continues s
 
 ### What You Can Run Today
 
-- App launches directly into **Playing** — road scrolls immediately, arrow buttons active
+- Home tab → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
 - Tap **←** / **→** (bottom corners) → player moves one lane per tap
 - Invalid moves at lane boundaries are ignored (Lane 0 + left = no-op)
 - Successful lane change triggers haptic feedback + car tilt animation
@@ -242,7 +261,7 @@ Adds lane collectible coins with independent spawning, overlap collection, and i
 
 ### What You Can Run Today
 
-- **Coins** spawn independently in lanes 0–2 (38×38 voxel coin sprite from `assets/voxel/Coin.png`, pooled Reanimated slots)
+- **Coins** spawn independently in lanes 0–2 (38×38 animated atlas from `assets/Coin Animations/texture.png` + `texture.json`, pooled Reanimated slots)
 - **Fair placement** — shuffled lane + Y-offset retry; full coin AABB must not intersect any active obstacle AABB expanded by 25px or any active shield pickup AABB; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
 - **Symmetrical spawn validation** — coins and shields reject buffered obstacle bounds at spawn; obstacles reject buffered coin/shield bounds at spawn (same margin, same `computeEntityVisualBounds` helpers)
 - **Collection** — player overlap removes coin, adds **+20 score** instantly, light haptic, floating `+20 SCORE` burst
@@ -258,9 +277,11 @@ src/game/systems/coin/
   coin-motion.types.ts             Reanimated render bridge
   coin.contract.ts
 src/game/assets/definitions/
-  coin.assets.ts                   38×38 coin asset + `COIN_IMAGE_SOURCE` (323×323 voxel PNG)
+  coin.assets.ts                   38×38 coin gameplay asset definition
+  coin-atlas.assets.ts             Spin atlas frames + layout metadata (texture.png/json)
 src/components/lane-game/
-  coin/CoinSprite.tsx              Memoized pooled coin render
+  coin/CoinSprite.tsx              Memoized pooled animated coin render (14 FPS shared clock)
+  coin/coinAnimationClock.ts       One shared Reanimated loop for all coin sprites
   coin/CoinCollectBurst.tsx        Independent +20 floaters (hold → fade → drift)
   layers/CoinLayer.tsx             Between Road and Obstacles (pointerEvents="none")
 ```

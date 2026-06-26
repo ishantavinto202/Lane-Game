@@ -1,10 +1,7 @@
 import { RenderLayer } from '../../types';
 import type { AssetDefinition } from '../../types';
 
-/** Source bitmap — 323×323 voxel coin, rendered at COIN_CONFIG.size (38×38). */
-export const COIN_IMAGE_SOURCE = require('../../../../assets/voxel/Coin.png');
-
-/** Collectible coin — 38×38 display size with voxel artwork (20% smaller than base 48). */
+/** Collectible coin — 38×38 display size with animated atlas artwork. */
 export const COIN_ASSET: AssetDefinition = {
   id: 'COIN',
   width: 38,
