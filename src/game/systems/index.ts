@@ -18,7 +18,9 @@ export { ObstacleSystem } from './obstacle/ObstacleSystem';
 export type { ObstacleRenderBridge, ObstacleRenderSlot } from './obstacle/obstacle-motion.types';
 export {
   resolveObstacleCollisionEffect,
+  resolveObstacleCollisionPenalty,
   type ObstacleCollisionEffect,
+  type ObstacleCollisionPenalty,
 } from './obstacle/obstacle-effect.resolver';
 
 export type { CollisionSystemContract } from './collision/collision.contract';

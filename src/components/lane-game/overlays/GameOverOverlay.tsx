@@ -1,20 +1,32 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import { GameStatus } from '@/src/game/types';
+
+import { ScoringGuideButton } from '../scoring-guide/ScoringGuideButton';
+import { ScoringGuideModal } from '../scoring-guide/ScoringGuideModal';
 
 function GameOverOverlayComponent() {
   const status = useGameStore(gameStoreSelectors.status);
   const scoreSnapshot = useGameStore(gameStoreSelectors.scoreSnapshot);
   const runStats = useGameStore(gameStoreSelectors.runStats);
   const restartRun = useGameStore(gameStoreSelectors.restartRun);
+  const [scoringGuideVisible, setScoringGuideVisible] = useState(false);
 
   const isVisible = status === GameStatus.GameOver;
 
   const handleRetry = useCallback(() => {
     restartRun();
   }, [restartRun]);
+
+  const handleOpenScoringGuide = useCallback(() => {
+    setScoringGuideVisible(true);
+  }, []);
+
+  const handleCloseScoringGuide = useCallback(() => {
+    setScoringGuideVisible(false);
+  }, []);
 
   const scoreText = useMemo(() => String(scoreSnapshot.currentScore), [scoreSnapshot.currentScore]);
   const bestText = useMemo(() => String(scoreSnapshot.bestScore), [scoreSnapshot.bestScore]);
@@ -25,35 +37,41 @@ function GameOverOverlayComponent() {
   }
 
   return (
-    <View pointerEvents="auto" style={styles.backdrop}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Game Over</Text>
+    <>
+      <View pointerEvents="auto" style={styles.backdrop}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Game Over</Text>
 
-        <View style={styles.scoreRow}>
-          <Text style={styles.scoreLabel}>Score</Text>
-          <Text style={styles.scoreValue}>{scoreText}</Text>
+          <View style={styles.scoreRow}>
+            <Text style={styles.scoreLabel}>Score</Text>
+            <Text style={styles.scoreValue}>{scoreText}</Text>
+          </View>
+
+          <View style={styles.scoreRow}>
+            <Text style={styles.scoreLabel}>Best</Text>
+            <Text style={styles.bestValue}>{bestText}</Text>
+          </View>
+
+          <View style={styles.scoreRow}>
+            <Text style={styles.scoreLabel}>Runs</Text>
+            <Text style={styles.scoreValue}>{runsText}</Text>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Play Again"
+            onPress={handleRetry}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryLabel}>Play Again</Text>
+          </Pressable>
+
+          <ScoringGuideButton onPress={handleOpenScoringGuide} />
         </View>
-
-        <View style={styles.scoreRow}>
-          <Text style={styles.scoreLabel}>Best</Text>
-          <Text style={styles.bestValue}>{bestText}</Text>
-        </View>
-
-        <View style={styles.scoreRow}>
-          <Text style={styles.scoreLabel}>Runs</Text>
-          <Text style={styles.scoreValue}>{runsText}</Text>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Retry"
-          onPress={handleRetry}
-          style={styles.retryButton}
-        >
-          <Text style={styles.retryLabel}>Retry</Text>
-        </Pressable>
       </View>
-    </View>
+
+      <ScoringGuideModal visible={scoringGuideVisible} onClose={handleCloseScoringGuide} />
+    </>
   );
 }
 
@@ -74,6 +92,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 40,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   title: {
     color: '#FFFFFF',

@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import type { CoinRenderBridge } from '@/src/game/systems/coin/coin-motion.types';
 
 import { ensureCoinAnimationClock } from '../coin/coinAnimationClock';
-import { CoinCollectBurst } from '../coin/CoinCollectBurst';
 import { CoinSprite } from '../coin/CoinSprite';
 
 export interface CoinLayerProps {
@@ -36,7 +35,6 @@ function CoinLayerComponent({ renderBridge, poolRevision }: CoinLayerProps) {
           />
         );
       })}
-      <CoinCollectBurst />
     </View>
   );
 }

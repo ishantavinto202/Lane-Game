@@ -2,7 +2,7 @@ import { RenderLayer } from '../../types';
 import type { AssetDefinition } from '../../types';
 
 /** Source bitmap — Blue Thunder voxel artwork, rendered at SPEED_BOOST_CONFIG.size (44×44). */
-export const SPEED_BOOST_IMAGE_SOURCE = require('../../../../assets/voxel/Blue Thunder Asset.png');
+export const SPEED_BOOST_IMAGE_SOURCE = require('../../../../assets/Voxel asset guide/Blue_Thunder_Asset.png');
 
 /** Collectible speed boost pickup — 44×44 display size with voxel artwork. */
 export const SPEED_BOOST_ASSET: AssetDefinition = {

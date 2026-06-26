@@ -6,6 +6,6 @@ export interface HealthSystemContract {
   readonly getSnapshot: () => HealthSnapshot;
   readonly isInvulnerable: () => boolean;
   readonly update: (deltaMs: number) => void;
-  readonly takeDamage: () => HealthSnapshot;
+  readonly takeDamage: (amount?: number) => HealthSnapshot;
   readonly reset: () => void;
 }

@@ -1,8 +1,9 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { View } from 'react-native';
 
 import type { SpeedBoostRenderBridge } from '@/src/game/systems/speed-boost/speed-boost-motion.types';
 
+import { ensureSpeedBoostAnimationClock } from '../speed-boost/speedBoostAnimationClock';
 import { SpeedBoostSprite } from '../speed-boost/SpeedBoostSprite';
 
 export interface SpeedBoostLayerProps {
@@ -12,6 +13,10 @@ export interface SpeedBoostLayerProps {
 
 function SpeedBoostLayerComponent({ renderBridge, poolRevision }: SpeedBoostLayerProps) {
   void poolRevision;
+
+  useEffect(() => {
+    ensureSpeedBoostAnimationClock();
+  }, []);
 
   return (
     <View pointerEvents="none" className="absolute inset-0">

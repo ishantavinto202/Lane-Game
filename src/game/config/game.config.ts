@@ -91,12 +91,32 @@ export const COUNTDOWN_CONFIG = {
   goHoldMs: 600,
 } as const;
 
-/** Obstacle collision personalities (Phase 5.4). */
+/** Shared floating score popup timing, stacking, and colors. */
+export const FLOATING_SCORE_FEEDBACK_CONFIG = {
+  holdMs: 600,
+  fadeMs: 300,
+  floatPx: 30,
+  stackSpacingPx: 16,
+  positionTolerancePx: 20,
+  fontSize: 26,
+  positiveColor: '#34C759',
+  negativeColor: '#FF3B30',
+} as const;
+
+/** Obstacle collision personalities (Phase 5.4 UI timing). */
 export const OBSTACLE_PERSONALITY_CONFIG = {
-  puddleScorePenalty: 25,
-  effectHoldMs: 1100,
-  effectFadeMs: 400,
-  effectFloatPx: 32,
+  effectHoldMs: FLOATING_SCORE_FEEDBACK_CONFIG.holdMs,
+  effectFadeMs: FLOATING_SCORE_FEEDBACK_CONFIG.fadeMs,
+  effectFloatPx: FLOATING_SCORE_FEEDBACK_CONFIG.floatPx,
+} as const;
+
+/** Per-type health loss and score penalty on player collision (Phase 5.6). */
+export const OBSTACLE_PENALTY_CONFIG = {
+  OBSTACLE_CONE: { healthLoss: 0, scorePenalty: 30 },
+  OBSTACLE_TIRE: { healthLoss: 0, scorePenalty: 40 },
+  OBSTACLE_CRATE: { healthLoss: 1, scorePenalty: 20 },
+  OBSTACLE_BARRIER: { healthLoss: 2, scorePenalty: 40 },
+  OBSTACLE_PUDDLE: { healthLoss: 0, scorePenalty: 25 },
 } as const;
 
 /** Coin spawn, collection, and pooling (Phase 4.2). */
@@ -114,11 +134,11 @@ export const COIN_CONFIG = {
   hitboxScale: 0.88,
   minCollectionOverlapArea: 41,
   /** Full-opacity hold before fade-out (Phase 5.3 UI). */
-  collectEffectHoldMs: 1100,
+  collectEffectHoldMs: FLOATING_SCORE_FEEDBACK_CONFIG.holdMs,
   /** Fade-out duration after hold. */
-  collectEffectFadeMs: 400,
+  collectEffectFadeMs: FLOATING_SCORE_FEEDBACK_CONFIG.fadeMs,
   /** Upward drift distance in px over the full effect. */
-  collectEffectFloatPx: 32,
+  collectEffectFloatPx: FLOATING_SCORE_FEEDBACK_CONFIG.floatPx,
   /** Score awarded immediately on pickup (Phase 5.3). */
   scoreReward: 20,
 } as const;

@@ -1,9 +1,9 @@
-import { memo, useMemo } from 'react';
-import { Image } from 'react-native';
+import { memo } from 'react';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
-import { SPEED_BOOST_IMAGE_SOURCE } from '@/src/game/assets/definitions/speed-boost.assets';
 import type { SpeedBoostRenderSlot } from '@/src/game/systems/speed-boost/speed-boost-motion.types';
+
+import { SpeedBoostAtlasSprite } from './SpeedBoostAtlasSprite';
 
 export interface SpeedBoostSpriteProps {
   readonly slot: SpeedBoostRenderSlot;
@@ -15,26 +15,19 @@ function SpeedBoostSpriteComponent({ slot, width, height }: SpeedBoostSpriteProp
   const halfWidth = width / 2;
   const halfHeight = height / 2;
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const containerStyle = useAnimatedStyle(() => ({
     position: 'absolute',
     left: slot.x.value - halfWidth,
     top: slot.y.value - halfHeight,
     width,
     height,
     opacity: slot.opacity.value,
+    overflow: 'hidden',
   }));
 
-  const imageStyle = useMemo(
-    () => ({
-      width,
-      height,
-    }),
-    [width, height],
-  );
-
   return (
-    <Animated.View pointerEvents="none" style={animatedStyle}>
-      <Image source={SPEED_BOOST_IMAGE_SOURCE} style={imageStyle} resizeMode="contain" />
+    <Animated.View pointerEvents="none" style={containerStyle}>
+      <SpeedBoostAtlasSprite displaySize={width} />
     </Animated.View>
   );
 }

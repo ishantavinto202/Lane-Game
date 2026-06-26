@@ -8,6 +8,8 @@ export interface CoinScoreFloaterInstance {
   readonly id: number;
   readonly x: number;
   readonly y: number;
+  readonly stackOffsetY: number;
+  readonly sequence: number;
 }
 
 /** Independent floating label spawned on obstacle personality effect. */
@@ -16,6 +18,8 @@ export interface ObstacleEffectFloaterInstance {
   readonly x: number;
   readonly y: number;
   readonly label: string;
+  readonly stackOffsetY: number;
+  readonly sequence: number;
 }
 
 /** Zustand store shape — Phase 4.2: coin pickups + lifecycle. Phase 4.3A: shield. */
@@ -29,6 +33,7 @@ export interface GameStoreState {
   readonly nextCoinScoreFloaterId: number;
   readonly obstacleEffectFloaters: readonly ObstacleEffectFloaterInstance[];
   readonly nextObstacleEffectFloaterId: number;
+  readonly nextFloatingScoreSequence: number;
   readonly shieldActive: boolean;
   readonly shieldBreakNonce: number;
   readonly speedBoostActive: boolean;

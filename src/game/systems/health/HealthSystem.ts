@@ -5,7 +5,7 @@ import type { HealthSnapshot } from '../../types';
 export class HealthSystem {
   readonly id = 'health-system' as const;
 
-  private current = HEALTH_CONFIG.maxHealth;
+  private current: number = HEALTH_CONFIG.maxHealth;
   private invulnerabilityRemainingMs = 0;
 
   getSnapshot(): HealthSnapshot {
@@ -28,12 +28,12 @@ export class HealthSystem {
     this.invulnerabilityRemainingMs = Math.max(0, this.invulnerabilityRemainingMs - deltaMs);
   }
 
-  takeDamage(): HealthSnapshot {
+  takeDamage(amount = 1): HealthSnapshot {
     if (this.isInvulnerable()) {
       return this.getSnapshot();
     }
 
-    this.current = Math.max(0, this.current - 1);
+    this.current = Math.max(0, this.current - amount);
     this.invulnerabilityRemainingMs = HEALTH_CONFIG.invulnerabilityMs;
     return this.getSnapshot();
   }

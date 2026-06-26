@@ -16,7 +16,7 @@ import { UiLayer } from '../layers/UiLayer';
 import { SpeedBoostHud } from '../ui/SpeedBoostHud';
 import { HealthHud } from '../ui/HealthHud';
 import { PauseButton } from '../controls/PauseButton';
-import { ObstacleEffectFloaters } from '../obstacle/ObstacleEffectFloaters';
+import { FloatingScoreFeedbackLayer } from '../ui/FloatingScoreFeedbackLayer';
 import { CountdownOverlay } from '../overlays/CountdownOverlay';
 import { CollisionFlashOverlay } from '../overlays/CollisionFlashOverlay';
 import { GameOverOverlay } from '../overlays/GameOverOverlay';
@@ -76,6 +76,7 @@ function GameScreenComponent() {
           poolRevision={decorationPoolRevision}
         />
         <ControlsLayer inputManagerRef={inputManagerRef} />
+        <FloatingScoreFeedbackLayer />
       </View>
       <UiLayer />
       <HealthHud />
@@ -83,7 +84,6 @@ function GameScreenComponent() {
       <PauseButton />
       <PauseOverlay />
       <CountdownOverlay />
-      <ObstacleEffectFloaters />
       <CollisionFlashOverlay />
       <GameOverOverlay />
     </View>

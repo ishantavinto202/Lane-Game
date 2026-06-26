@@ -6,4 +6,6 @@ export {
   getRoadDefinitions,
 } from './asset-registry';
 
+export { preloadLaneGameImages } from './preload-lane-game-images';
+
 export * from './definitions';

@@ -14,12 +14,18 @@ app/
 ├── lane-game.tsx        Fullscreen game route → GameScreen
 └── (tabs)/
     ├── _layout.tsx      Tab navigator (Home, Tab Two)
-    └── index.tsx        Home landing → router.push('/lane-game')
+    └── index.tsx        Home landing → preload assets → router.push('/lane-game')
+
+src/game/assets/
+└── preload-lane-game-images.ts   Lane-only Image.prefetch before navigation
 ```
 
 - **Home tab** (`/(tabs)`) — landing with **Play** button
 - **Game route** (`/lane-game`) — pushed onto root stack; no bottom tab bar
-- Launch game: `router.push('/lane-game')`
+- **Launch flow:** tap **Play** → button disables immediately → all Lane PNGs prefetch → `router.push('/lane-game')`
+- **Double-tap guard:** synchronous ref lock + disabled Pressable; only one navigation per launch
+- **Return to Home:** `useFocusEffect` resets Play button to idle when the tab regains focus
+- **Preload scope:** player, road, grass, sidewalk, obstacles, coins (atlas), shield, speed boost, trees, HUD hearts — no Daily Word or audio assets
 
 ---
 
@@ -261,10 +267,10 @@ Adds lane collectible coins with independent spawning, overlap collection, and i
 
 ### What You Can Run Today
 
-- **Coins** spawn independently in lanes 0–2 (38×38 animated atlas from `assets/Coin Animations/texture.png` + `texture.json`, pooled Reanimated slots)
+- **Coins** spawn independently in lanes 0–2 (38×38 animated atlas from `assets/Coin Animations/texture.png` + `texture.json`, +20% brightness/contrast on atlas texture, pooled Reanimated slots)
 - **Fair placement** — shuffled lane + Y-offset retry; full coin AABB must not intersect any active obstacle AABB expanded by 25px or any active shield pickup AABB; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
 - **Symmetrical spawn validation** — coins and shields reject buffered obstacle bounds at spawn; obstacles reject buffered coin/shield bounds at spawn (same margin, same `computeEntityVisualBounds` helpers)
-- **Collection** — player overlap removes coin, adds **+20 score** instantly, light haptic, floating `+20 SCORE` burst
+- **Collection** — player overlap removes coin, adds **+20 score** instantly, light haptic, floating **`+20`** popup (green)
 - **HUD** — top center shows hearts + shield icon only (no coin wallet)
 - **Retry** — active coin pool cleared, spawning restarts; score resets via `ScoreSystem.reset()`
 
@@ -280,9 +286,9 @@ src/game/assets/definitions/
   coin.assets.ts                   38×38 coin gameplay asset definition
   coin-atlas.assets.ts             Spin atlas frames + layout metadata (texture.png/json)
 src/components/lane-game/
-  coin/CoinSprite.tsx              Memoized pooled animated coin render (14 FPS shared clock)
+  coin/CoinSprite.tsx              Memoized pooled animated coin render (14.5 FPS shared clock)
   coin/coinAnimationClock.ts       One shared Reanimated loop for all coin sprites
-  coin/CoinCollectBurst.tsx        Independent +20 floaters (hold → fade → drift)
+  ui/FloatingScoreFeedbackLayer.tsx Unified +/− score floaters with vertical stacking
   layers/CoinLayer.tsx             Between Road and Obstacles (pointerEvents="none")
 ```
 
@@ -583,7 +589,7 @@ Phase 5.3 removes coin wallet/currency tracking. Coins remain spawnable collecti
 
 - Collecting a coin adds **+20 score** immediately via `ScoreSystem.addPickupBonus()`
 - Floating pickup feedback shows **`+20`** at collection position — each pickup spawns an independent floater
-- Floaters hold at full opacity for **1.1s**, then fade out over **0.4s** with upward drift (~1.5s total)
+- Floaters hold at full opacity for **0.6s**, then fade out over **0.3s** with eased upward drift (~**0.9s** total readable time)
 - No shared animation state between concurrent pickups
 - No `runCoins` or `lifetimeCoins` in Zustand store
 - No coin currency persisted to AsyncStorage
@@ -604,32 +610,31 @@ GameEngine.evaluateCoinCollection()
 | Setting | Value |
 |---------|-------|
 | `COIN_CONFIG.scoreReward` | **20** |
-| `COIN_CONFIG.collectEffectHoldMs` | **1100** (visible at full opacity) |
-| `COIN_CONFIG.collectEffectFadeMs` | **400** (smooth fade-out) |
-| `COIN_CONFIG.collectEffectFloatPx` | **32** (upward drift) |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.holdMs` | **600** (full opacity) |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.fadeMs` | **300** (eased fade-out) |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.floatPx` | **30** (upward drift) |
 
 ---
 
 ## Phase 5.4 — Obstacle Personality System (Complete)
 
-Phase 5.4 adds per-type collision personalities resolved after a standard obstacle hit.
+Phase 5.4 introduced per-type collision resolution and floating score feedback. **Collision penalties are now defined in `OBSTACLE_PENALTY_CONFIG` (Phase 5.6).**
 
 ### What You Can Run Today
 
-- **Puddle** (`OBSTACLE_PUDDLE`) spawns via the existing shuffled spawn bag — spawn fairness unchanged
-- Puddle collision applies **-25 score** (`score = max(0, score - 25)`) with no health loss
-- Red floating **`-25`** feedback at the hit position (independent floater per collision)
-- Tire, Cone, Crate, and Barrier keep the original health-damage collision path
+- Each obstacle type resolves to a configured **health loss** and **score penalty** (see Phase 5.6)
+- Red floating **`-N`** feedback at the hit position when a score penalty applies
+- Health-damage hits still trigger collision flash, damage blink, and collision SFX
 
 ### New Modules
 
 ```txt
 src/game/systems/obstacle/
-  obstacle-effect.resolver.ts      Maps obstacle type → collision personality
+  obstacle-effect.resolver.ts      Maps obstacle type → collision penalties
 src/components/lane-game/
-  obstacle/ObstacleEffectFloaters.tsx   Red -25 floaters
+  ui/FloatingScoreFeedbackLayer.tsx     Unified green + / red − floaters with vertical stacking
   ui/FloatingScoreLabel.tsx             Shared hold → fade → drift label
-src/game/config/game.config.ts    OBSTACLE_PERSONALITY_CONFIG
+src/game/config/game.config.ts    OBSTACLE_PENALTY_CONFIG, OBSTACLE_PERSONALITY_CONFIG
 ```
 
 ### Effect Resolution Chain
@@ -637,19 +642,146 @@ src/game/config/game.config.ts    OBSTACLE_PERSONALITY_CONFIG
 ```
 CollisionSystem.evaluate() [unchanged]
   → GameEngine.handleObstacleHit()
-  → resolveObstacleCollisionEffect(assetId)
-  → OBSTACLE_PUDDLE → ScoreSystem.applyScorePenalty(25) + triggerObstacleEffectFloater("-25")
-  → all other types → applyObstacleHealthDamage() [unchanged]
+  → resolveObstacleCollisionPenalty(assetId)
+  → ScoreSystem.applyScorePenalty() when scorePenalty > 0 + triggerObstacleEffectFloater("-N")
+  → HealthSystem.takeDamage(healthLoss) when healthLoss > 0 + collision flash / game over
 ```
 
 ### Config
 
 | Setting | Value |
 |---------|-------|
-| `OBSTACLE_PERSONALITY_CONFIG.puddleScorePenalty` | **25** |
-| `OBSTACLE_PERSONALITY_CONFIG.effectHoldMs` | **1100** |
-| `OBSTACLE_PERSONALITY_CONFIG.effectFadeMs` | **400** |
-| `OBSTACLE_PERSONALITY_CONFIG.effectFloatPx` | **32** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.holdMs` | **600** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.fadeMs` | **300** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.floatPx` | **30** |
+
+---
+
+## Phase 5.6 — Obstacle-Specific Collision Penalties (Complete)
+
+Each obstacle type applies independent health loss and score penalty from a single config map.
+
+### Penalty Table
+
+| Obstacle | Health Loss | Score Penalty |
+| -------- | ----------: | ------------: |
+| Cone     |           0 |           -30 |
+| Tyre     |           0 |           -40 |
+| Crate    |           1 |           -20 |
+| Barrier  |           2 |           -40 |
+| Puddle   |           0 |           -25 |
+
+- Score clamped to **≥ 0**; health clamped to **≥ 0**
+- Score-only hits (Cone, Tyre, Puddle): floating `-N` label + light haptic
+- Health hits (Crate, Barrier): also collision flash, damage blink, collision SFX, error haptic
+- Combined hits apply both penalties in one collision; game over when health reaches 0
+
+### Config
+
+```ts
+OBSTACLE_PENALTY_CONFIG = {
+  OBSTACLE_CONE:    { healthLoss: 0, scorePenalty: 30 },
+  OBSTACLE_TIRE:    { healthLoss: 0, scorePenalty: 40 },
+  OBSTACLE_CRATE:   { healthLoss: 1, scorePenalty: 20 },
+  OBSTACLE_BARRIER: { healthLoss: 2, scorePenalty: 40 },
+  OBSTACLE_PUDDLE:  { healthLoss: 0, scorePenalty: 25 },
+}
+```
+
+---
+
+## Phase X.X — Floating Score Feedback Polish (Complete)
+
+Improves readability and collision handling for `+N` / `−N` score popups without changing gameplay values or pooling.
+
+### What You Can Run Today
+
+- **Larger text** — `FLOATING_SCORE_FEEDBACK_CONFIG.fontSize` **26** (~30% larger than the previous 20px)
+- **Readable timing** — **600ms** hold + **300ms** eased fade/drift (~**0.9s** total)
+- **Visual clarity** — stronger drop shadow; green **`+N`** (`#34C759`), red **`−N`** (`#FF3B30`)
+- **Vertical stacking** — simultaneous events within **20px** of the same anchor offset by **16px** instead of overlapping; spawn order preserved via monotonic `sequence`
+- **Unified layer** — `FloatingScoreFeedbackLayer` renders coin and obstacle floaters inside the world camera (same coordinate space)
+
+### Spawn / Stack Chain
+
+```
+GameEngine triggerCoinCollect() / triggerObstacleEffectFloater()
+  → resolveFloatingScoreStackOffsetY() counts active floaters near (x, y)
+  → Zustand appends floater with stackOffsetY + sequence
+  → FloatingScoreFeedbackLayer merges both arrays, sorts by sequence
+  → FloatingScoreLabel animates hold → eased fade + upward drift
+  → dismissCoinScoreFloater() / dismissObstacleEffectFloater() on complete
+```
+
+### Config
+
+| Setting | Value |
+|---------|-------|
+| `FLOATING_SCORE_FEEDBACK_CONFIG.fontSize` | **26** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.holdMs` | **600** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.fadeMs` | **300** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.floatPx` | **30** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.stackSpacingPx` | **16** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.positionTolerancePx` | **20** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.positiveColor` | **`#34C759`** |
+| `FLOATING_SCORE_FEEDBACK_CONFIG.negativeColor` | **`#FF3B30`** |
+
+### New Modules
+
+```txt
+src/game/store/
+  floating-score-stack.ts          Near-anchor stack slot resolver
+src/components/lane-game/ui/
+  FloatingScoreFeedbackLayer.tsx   Unified renderer for coin + obstacle floaters
+```
+
+---
+
+## Phase 5.7 — Scoring Guide Modal (Complete)
+
+A minimal in-game reference for every collectible reward and obstacle penalty — accessible without interrupting gameplay state.
+
+### What You Can Run Today
+
+- **Pause screen** — **Resume** primary button + **ⓘ Scoring Guide** secondary button below
+- **Game Over screen** — **Play Again** primary button + **ⓘ Scoring Guide** secondary button below
+- **Modal** — blur + dim overlay, rounded card, scrollable on small screens, tap outside or **Close** to dismiss
+- **Data source** — `src/game/content/scoring-guide.content.ts` reads `COIN_CONFIG.scoreReward` and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
+- **Assets** — modal-only voxel PNGs from `assets/Voxel asset guide/` (`Coin.png`, `Blue_Thunder_Asset.png`, `Cone_1.png`, `Tyre_3.png`, `Crate_5.png`, `Barrier_2.png`, `Puddle_4.png`); each in a fixed **64×64** centered icon slot via `ScoringGuideStaticIcon`
+- In-game sprites unchanged — coin atlas, speed-boost atlas, and obstacle skins still use gameplay assets
+- Green reward labels, red penalty labels, gray secondary notes (`No Health Loss`, `No Score Change`); game stays paused / game-over while the guide is open
+
+### New Modules
+
+```txt
+src/game/content/
+  scoring-guide.content.ts           Shared collectible + obstacle guide entries
+src/game/assets/definitions/
+  scoring-guide-voxel.assets.ts    Modal-only voxel PNG sources (not used in gameplay)
+src/components/lane-game/scoring-guide/
+  ScoringGuideModal.tsx              Blur modal with scrollable sections
+  ScoringGuideButton.tsx             Secondary entry-point button
+  ScoringGuideCoinIcon.tsx           Modal-only voxel coin PNG
+  ScoringGuideSpeedBoostIcon.tsx     Modal-only voxel speed boost PNG
+  ScoringGuideStaticIcon.tsx         Shared 64×64 icon slot + contain image
+src/components/lane-game/coin/
+  CoinAtlasSprite.tsx                Shared coin atlas viewport + clock
+src/components/lane-game/speed-boost/
+  SpeedBoostAtlasSprite.tsx          Shared thunder atlas viewport (pickups + guide)
+  SpeedBoostSprite.tsx               World-position wrapper → SpeedBoostAtlasSprite
+  speedBoostAnimationClock.ts        Shared UI-thread frame loop
+src/components/lane-game/atlas/
+  AtlasSpriteViewport.tsx            Per-frame clip rect + atlas offset renderer
+  useAtlasFrameImageStyle.ts         UI-thread image + clip styles
+src/game/assets/
+  texture-atlas.build.ts             TexturePacker hash layout builder (trim-aware per frame)
+src/game/assets/
+  texture-atlas.build.ts             Shared atlas frame/layout builders
+  definitions/speed-boost-atlas.assets.ts  Thunder Animations texture.json/png
+src/components/lane-game/overlays/
+  PauseOverlay.tsx                   Resume + Scoring Guide (updated)
+  GameOverOverlay.tsx                Play Again + Scoring Guide (updated)
+```
 
 ---
 
@@ -659,7 +791,7 @@ Phase 5.5 adds a collectible ⚡ speed boost that temporarily doubles world scro
 
 ### What You Can Run Today
 
-- **Speed Boost pickups** spawn independently (44×44 Blue Thunder voxel sprite, pooled Reanimated slots, obstacle/coin/shield-safe placement)
+- **Speed Boost pickups** spawn independently (44×44 looping **Thunder Animations** atlas via shared `SpeedBoostAtlasSprite`, pooled Reanimated slots, obstacle/coin/shield-safe placement)
 - **Collection** activates a **3 second** boost — world speed ×2 and score rate ×2 (`+10/sec` instead of `+5/sec`)
 - Re-picking during an active boost **refreshes duration** to 3s (no infinite stack)
 - Boost ends automatically — speed and score rate revert to baseline
@@ -673,11 +805,14 @@ src/game/systems/speed-boost/
   SpeedBoostRuntime.ts             Active boost timer + multipliers
   speed-boost-motion.types.ts      Reanimated render bridge
 src/game/assets/definitions/
-  speed-boost.assets.ts            44×44 pickup + `SPEED_BOOST_IMAGE_SOURCE` (Blue Thunder voxel PNG)
+  speed-boost.assets.ts            44×44 hitbox + HUD static icon
+  speed-boost-atlas.assets.ts      Thunder Animations texture.json/png
 src/components/lane-game/
-  speed-boost/SpeedBoostSprite.tsx Memoized pooled pickup render
-  layers/SpeedBoostLayer.tsx       Between Shield and Obstacle layers
-  ui/SpeedBoostHud.tsx             ⚡ icon + timer + progress bar
+  speed-boost/SpeedBoostAtlasSprite.tsx Shared thunder atlas viewport
+  speed-boost/SpeedBoostSprite.tsx      World-position wrapper → atlas sprite
+  speed-boost/speedBoostAnimationClock.ts Shared frame loop (14.5 FPS)
+  layers/SpeedBoostLayer.tsx       Starts atlas clock on mount
+  ui/SpeedBoostHud.tsx             Static Blue Thunder HUD icon + timer + progress bar
 ```
 
 ### Boost Flow

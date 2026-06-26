@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { GameStatus } from '../types';
 
+import { resolveFloatingScoreStackOffsetY } from './floating-score-stack';
 import type { GameStore } from './game-store.types';
 import {
   INITIAL_HEALTH,
@@ -12,6 +13,7 @@ import {
 const clearScoreFeedbackFloaters = {
   coinScoreFloaters: [] as const,
   obstacleEffectFloaters: [] as const,
+  nextFloatingScoreSequence: 1,
 };
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -24,6 +26,7 @@ export const useGameStore = create<GameStore>((set) => ({
   nextCoinScoreFloaterId: 1,
   obstacleEffectFloaters: [],
   nextObstacleEffectFloaterId: 1,
+  nextFloatingScoreSequence: 1,
   shieldActive: false,
   shieldBreakNonce: 0,
   speedBoostActive: false,
@@ -70,10 +73,18 @@ export const useGameStore = create<GameStore>((set) => ({
   setHealth: (health) => set({ health }),
   triggerCoinCollect: (x, y) =>
     set((state) => {
+      const activeFloaters = [...state.coinScoreFloaters, ...state.obstacleEffectFloaters];
+      const stackOffsetY = resolveFloatingScoreStackOffsetY(x, y, activeFloaters);
       const id = state.nextCoinScoreFloaterId;
+      const sequence = state.nextFloatingScoreSequence;
+
       return {
-        coinScoreFloaters: [...state.coinScoreFloaters, { id, x, y }],
+        coinScoreFloaters: [
+          ...state.coinScoreFloaters,
+          { id, x, y, stackOffsetY, sequence },
+        ],
         nextCoinScoreFloaterId: id + 1,
+        nextFloatingScoreSequence: sequence + 1,
       };
     }),
   dismissCoinScoreFloater: (id) =>
@@ -82,10 +93,18 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
   triggerObstacleEffectFloater: (x, y, label) =>
     set((state) => {
+      const activeFloaters = [...state.coinScoreFloaters, ...state.obstacleEffectFloaters];
+      const stackOffsetY = resolveFloatingScoreStackOffsetY(x, y, activeFloaters);
       const id = state.nextObstacleEffectFloaterId;
+      const sequence = state.nextFloatingScoreSequence;
+
       return {
-        obstacleEffectFloaters: [...state.obstacleEffectFloaters, { id, x, y, label }],
+        obstacleEffectFloaters: [
+          ...state.obstacleEffectFloaters,
+          { id, x, y, label, stackOffsetY, sequence },
+        ],
         nextObstacleEffectFloaterId: id + 1,
+        nextFloatingScoreSequence: sequence + 1,
       };
     }),
   dismissObstacleEffectFloater: (id) =>

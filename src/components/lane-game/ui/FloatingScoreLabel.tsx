@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, type TextStyle } from 'react-native';
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -8,10 +9,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { FLOATING_SCORE_FEEDBACK_CONFIG } from '@/src/game/config';
+
+const LABEL_ANCHOR_OFFSET_Y = 18;
+const LABEL_HALF_WIDTH = 50;
+const LABEL_MIN_WIDTH = 100;
+
 export interface FloatingScoreLabelProps {
   readonly id: number;
   readonly x: number;
   readonly y: number;
+  readonly stackOffsetY: number;
   readonly label: string;
   readonly color: string;
   readonly holdMs: number;
@@ -24,6 +32,7 @@ function FloatingScoreLabelComponent({
   id,
   x,
   y,
+  stackOffsetY,
   label,
   color,
   holdMs,
@@ -37,23 +46,25 @@ function FloatingScoreLabelComponent({
 
   useEffect(() => {
     const totalMs = holdMs + fadeMs;
+    const driftEasing = Easing.out(Easing.cubic);
+    const fadeEasing = Easing.out(Easing.quad);
 
     opacity.value = withSequence(
       withTiming(1, { duration: holdMs }),
-      withTiming(0, { duration: fadeMs }, (finished) => {
+      withTiming(0, { duration: fadeMs, easing: fadeEasing }, (finished) => {
         if (finished) {
           runOnJS(handleComplete)();
         }
       }),
     );
-    translateY.value = withTiming(-floatPx, { duration: totalMs });
+    translateY.value = withTiming(-floatPx, { duration: totalMs, easing: driftEasing });
   }, [fadeMs, floatPx, handleComplete, holdMs, opacity, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     position: 'absolute',
-    left: x - 40,
-    top: y - 14,
-    minWidth: 80,
+    left: x - LABEL_HALF_WIDTH,
+    top: y - LABEL_ANCHOR_OFFSET_Y + stackOffsetY,
+    minWidth: LABEL_MIN_WIDTH,
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
     alignItems: 'center',
@@ -63,6 +74,7 @@ function FloatingScoreLabelComponent({
     () => ({
       ...styles.label,
       color,
+      fontSize: FLOATING_SCORE_FEEDBACK_CONFIG.fontSize,
     }),
     [color],
   );
@@ -76,13 +88,12 @@ function FloatingScoreLabelComponent({
 
 const styles = StyleSheet.create({
   label: {
-    fontSize: 20,
     fontWeight: '900',
     letterSpacing: 0.5,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.92)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
 });
 

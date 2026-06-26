@@ -24,7 +24,7 @@ import {
 } from '../systems/player/PlayerMotionController';
 import { PlayerSystem, type PlayerSnapshot } from '../systems/player/PlayerSystem';
 import { ObstacleSystem } from '../systems/obstacle/ObstacleSystem';
-import { resolveObstacleCollisionEffect } from '../systems/obstacle/obstacle-effect.resolver';
+import { resolveObstacleCollisionPenalty } from '../systems/obstacle/obstacle-effect.resolver';
 import type { ObstacleRenderBridge } from '../systems/obstacle/obstacle-motion.types';
 import {
   CoinSystem,
@@ -350,15 +350,18 @@ export class GameEngine {
       return;
     }
 
-    const effect = resolveObstacleCollisionEffect(obstacle.assetId);
+    const penalty = resolveObstacleCollisionPenalty(obstacle.assetId);
     this.obstacleSystem.removeObstacleById(collision.obstacleId);
 
-    if (effect.kind === 'score-penalty') {
-      this.applyObstacleScorePenalty(obstacle, effect.amount);
-      return;
+    if (penalty.scorePenalty > 0) {
+      this.applyObstacleScorePenalty(obstacle, penalty.scorePenalty);
     }
 
-    this.applyObstacleHealthDamage();
+    if (penalty.healthLoss > 0) {
+      this.applyObstacleHealthDamage(penalty.healthLoss);
+    } else if (penalty.scorePenalty > 0 && GAME_CONFIG.enableHaptics) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   }
 
   private findActiveObstacle(obstacleId: string): ObstacleEntity | null {
@@ -371,14 +374,10 @@ export class GameEngine {
     const scoreSnapshot = this.scoreSystem.applyScorePenalty(amount);
     useGameStore.getState().setScoreSnapshot(scoreSnapshot);
     useGameStore.getState().triggerObstacleEffectFloater(obstacle.x, obstacle.y, `-${amount}`);
-
-    if (GAME_CONFIG.enableHaptics) {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
   }
 
-  private applyObstacleHealthDamage(): void {
-    const healthSnapshot = this.healthSystem.takeDamage();
+  private applyObstacleHealthDamage(healthLoss: number): void {
+    const healthSnapshot = this.healthSystem.takeDamage(healthLoss);
 
     useGameStore.getState().setHealth(healthSnapshot.current);
     useGameStore.getState().triggerCollisionFlash();
