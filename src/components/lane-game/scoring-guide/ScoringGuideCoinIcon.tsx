@@ -1,12 +1,16 @@
 import { memo } from 'react';
 
-import { SCORING_GUIDE_COIN_IMAGE_SOURCE } from '@/src/game/assets/definitions/scoring-guide-voxel.assets';
+import { CoinAtlasSprite } from '../coin/CoinAtlasSprite';
 
-import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
+import { SCORING_GUIDE_ATLAS_DISPLAY_SIZE, ScoringGuideIconSlot } from './ScoringGuideIconSlot';
 
-/** Scoring guide coin — modal-only voxel artwork. */
+/** Scoring guide coin — animated atlas preview. */
 function ScoringGuideCoinIconComponent() {
-  return <ScoringGuideStaticIcon source={SCORING_GUIDE_COIN_IMAGE_SOURCE} />;
+  return (
+    <ScoringGuideIconSlot>
+      <CoinAtlasSprite displaySize={SCORING_GUIDE_ATLAS_DISPLAY_SIZE} />
+    </ScoringGuideIconSlot>
+  );
 }
 
 export const ScoringGuideCoinIcon = memo(ScoringGuideCoinIconComponent);

@@ -745,11 +745,15 @@ A minimal in-game reference for every collectible reward and obstacle penalty �
 
 - **Pause screen** — **Resume** primary button + **ⓘ Scoring Guide** secondary button below
 - **Game Over screen** — **Play Again** primary button + **ⓘ Scoring Guide** secondary button below
-- **Modal** — blur + dim overlay, rounded card, scrollable on small screens, tap outside or **Close** to dismiss
-- **Data source** — `src/game/content/scoring-guide.content.ts` reads `COIN_CONFIG.scoreReward` and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
-- **Assets** — modal-only voxel PNGs from `assets/Voxel asset guide/` (`Coin.png`, `Blue_Thunder_Asset.png`, `Cone_1.png`, `Tyre_3.png`, `Crate_5.png`, `Barrier_2.png`, `Puddle_4.png`); each in a fixed **64×64** centered icon slot via `ScoringGuideStaticIcon`
-- In-game sprites unchanged — coin atlas, speed-boost atlas, and obstacle skins still use gameplay assets
-- Green reward labels, red penalty labels, gray secondary notes (`No Health Loss`, `No Score Change`); game stays paused / game-over while the guide is open
+- **Modal** — compact premium card (~66% viewport height, max 520px), blur + dim overlay, scrollable on small screens, tap outside or **×** to dismiss
+- **Layout** — horizontal row cards: **64×64** icon slot, bold title + muted description, right-aligned score/health stats
+- **Header** — bold **Scoring Guide** title, phosphor **×** close button, hairline divider
+- **Sections** — `⭐ Collectibles` and `🚧 Obstacles` labels inside grouped card lists with row separators
+- **Typography** — rewards as large green `+N`, penalties as large red `-N`, health as smaller red `❤ -N` beneath score
+- **Data source** — `scoring-guide.content.ts` reads `COIN_CONFIG.scoreReward` and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
+- **Assets** — animated `CoinAtlasSprite` + `SpeedBoostAtlasSprite` for collectibles; modal-only voxel PNGs for obstacles (`assets/Voxel asset guide/`) with per-icon shadow compensation
+- In-game sprites unchanged — gameplay atlases and obstacle skins untouched
+- Game stays paused / game-over while the guide is open
 
 ### New Modules
 
@@ -759,11 +763,12 @@ src/game/content/
 src/game/assets/definitions/
   scoring-guide-voxel.assets.ts    Modal-only voxel PNG sources (not used in gameplay)
 src/components/lane-game/scoring-guide/
-  ScoringGuideModal.tsx              Blur modal with scrollable sections
+  ScoringGuideModal.tsx              Compact card layout, × close, row cards + stats column
   ScoringGuideButton.tsx             Secondary entry-point button
-  ScoringGuideCoinIcon.tsx           Modal-only voxel coin PNG
-  ScoringGuideSpeedBoostIcon.tsx     Modal-only voxel speed boost PNG
-  ScoringGuideStaticIcon.tsx         Shared 64×64 icon slot + contain image
+  ScoringGuideCoinIcon.tsx           Animated coin atlas preview (46px in 64px slot)
+  ScoringGuideSpeedBoostIcon.tsx     Animated thunder atlas preview (46px in 64px slot)
+  ScoringGuideStaticIcon.tsx         Voxel obstacle PNG with shadow compensation
+  ScoringGuideIconSlot.tsx           Shared 64×64 rounded icon container
 src/components/lane-game/coin/
   CoinAtlasSprite.tsx                Shared coin atlas viewport + clock
 src/components/lane-game/speed-boost/

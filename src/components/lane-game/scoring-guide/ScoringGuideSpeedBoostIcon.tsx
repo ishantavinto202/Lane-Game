@@ -1,12 +1,16 @@
 import { memo } from 'react';
 
-import { SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE } from '@/src/game/assets/definitions/scoring-guide-voxel.assets';
+import { SpeedBoostAtlasSprite } from '../speed-boost/SpeedBoostAtlasSprite';
 
-import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
+import { SCORING_GUIDE_ATLAS_DISPLAY_SIZE, ScoringGuideIconSlot } from './ScoringGuideIconSlot';
 
-/** Scoring guide speed boost — modal-only voxel artwork. */
+/** Scoring guide speed boost — animated thunder atlas preview. */
 function ScoringGuideSpeedBoostIconComponent() {
-  return <ScoringGuideStaticIcon source={SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE} />;
+  return (
+    <ScoringGuideIconSlot>
+      <SpeedBoostAtlasSprite displaySize={SCORING_GUIDE_ATLAS_DISPLAY_SIZE} />
+    </ScoringGuideIconSlot>
+  );
 }
 
 export const ScoringGuideSpeedBoostIcon = memo(ScoringGuideSpeedBoostIconComponent);
