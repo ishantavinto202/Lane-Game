@@ -4,7 +4,7 @@ export {
   HEART_FULL_IMAGE_SOURCE,
   HEART_HUD_ICON,
 } from './heart.assets';
-export { SHIELD_ASSET, SHIELD_IMAGE_SOURCE } from './shield.assets';
+export { SHIELD_ASSET, SHIELD_BUBBLE_IMAGE_SOURCE, SHIELD_IMAGE_SOURCE } from './shield.assets';
 export { SPEED_BOOST_ASSET, SPEED_BOOST_IMAGE_SOURCE } from './speed-boost.assets';
 export { TREE_IMAGE_SOURCE, TREE_SKIN } from './decoration.assets';
 

@@ -28,6 +28,7 @@ export const useGameStore = create<GameStore>((set) => ({
   nextObstacleEffectFloaterId: 1,
   nextFloatingScoreSequence: 1,
   shieldActive: false,
+  shieldRemainingRatio: 0,
   shieldBreakNonce: 0,
   speedBoostActive: false,
   speedBoostRemainingRatio: 0,
@@ -42,6 +43,7 @@ export const useGameStore = create<GameStore>((set) => ({
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
       shieldActive: false,
+      shieldRemainingRatio: 0,
       shieldBreakNonce: 0,
       speedBoostActive: false,
       speedBoostRemainingRatio: 0,
@@ -58,6 +60,7 @@ export const useGameStore = create<GameStore>((set) => ({
       resetNonce: state.resetNonce + 1,
       health: INITIAL_HEALTH,
       shieldActive: false,
+      shieldRemainingRatio: 0,
       shieldBreakNonce: 0,
       speedBoostActive: false,
       speedBoostRemainingRatio: 0,
@@ -111,13 +114,16 @@ export const useGameStore = create<GameStore>((set) => ({
     set((state) => ({
       obstacleEffectFloaters: state.obstacleEffectFloaters.filter((floater) => floater.id !== id),
     })),
-  setShieldActive: (shieldActive) => set({ shieldActive }),
+  setShieldState: (shieldActive, shieldRemainingRatio) =>
+    set({ shieldActive, shieldRemainingRatio }),
   triggerShieldBreak: () =>
     set((state) => ({
       shieldActive: false,
+      shieldRemainingRatio: 0,
       shieldBreakNonce: state.shieldBreakNonce + 1,
     })),
-  clearShieldState: () => set({ shieldActive: false, shieldBreakNonce: 0 }),
+  clearShieldState: () =>
+    set({ shieldActive: false, shieldRemainingRatio: 0, shieldBreakNonce: 0 }),
   setSpeedBoostState: (speedBoostActive, speedBoostRemainingRatio) =>
     set({ speedBoostActive, speedBoostRemainingRatio }),
   clearSpeedBoostState: () => set({ speedBoostActive: false, speedBoostRemainingRatio: 0 }),

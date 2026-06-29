@@ -1,6 +1,7 @@
 import { Image, type ImageSourcePropType } from 'react-native';
 
 import { COIN_ATLAS_TEXTURE } from './definitions/coin-atlas.assets';
+import { SHIELD_ATLAS_TEXTURE } from './definitions/shield-atlas.assets';
 import { SPEED_BOOST_ATLAS_TEXTURE } from './definitions/speed-boost-atlas.assets';
 import {
   GRASS_IMAGE_SOURCE,
@@ -15,6 +16,7 @@ import {
   ROAD_LOOP_A_IMAGE_SOURCE,
   ROAD_LOOP_B_IMAGE_SOURCE,
   ROAD_START_IMAGE_SOURCE,
+  SHIELD_BUBBLE_IMAGE_SOURCE,
   SHIELD_IMAGE_SOURCE,
   SIDEWALK_LEFT_IMAGE_SOURCE,
   SIDEWALK_RIGHT_IMAGE_SOURCE,
@@ -26,6 +28,8 @@ import {
 const LANE_GAME_IMAGE_SOURCES: readonly ImageSourcePropType[] = [
   PLAYER_CAR_IMAGE_SOURCE,
   COIN_ATLAS_TEXTURE,
+  SHIELD_ATLAS_TEXTURE,
+  SHIELD_BUBBLE_IMAGE_SOURCE,
   SHIELD_IMAGE_SOURCE,
   SPEED_BOOST_ATLAS_TEXTURE,
   SPEED_BOOST_IMAGE_SOURCE,

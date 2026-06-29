@@ -20,8 +20,9 @@ function ShieldBreakFlashComponent({ snapshot, motion }: ShieldBreakFlashProps) 
   const shieldBreakNonce = useGameStore(gameStoreSelectors.shieldBreakNonce);
   const flashOpacity = useSharedValue(0);
   const padding = SHIELD_CONFIG.bubblePaddingPx;
-  const bubbleWidth = snapshot.width + padding * 2;
-  const bubbleHeight = snapshot.height + padding * 2;
+  const scale = SHIELD_CONFIG.bubbleDisplayScale;
+  const bubbleWidth = (snapshot.width + padding * 2) * scale;
+  const bubbleHeight = (snapshot.height + padding * 2) * scale;
   const halfWidth = bubbleWidth / 2;
   const halfHeight = bubbleHeight / 2;
   const duration = SHIELD_CONFIG.breakEffectDurationMs;

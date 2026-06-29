@@ -1,9 +1,9 @@
-import { memo, useMemo } from 'react';
-import { Image } from 'react-native';
+import { memo } from 'react';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
-import { SHIELD_IMAGE_SOURCE } from '@/src/game/assets/definitions/shield.assets';
 import type { ShieldRenderSlot } from '@/src/game/systems/shield/shield-motion.types';
+
+import { ShieldAtlasSprite } from './ShieldAtlasSprite';
 
 export interface ShieldSpriteProps {
   readonly slot: ShieldRenderSlot;
@@ -15,26 +15,19 @@ function ShieldSpriteComponent({ slot, width, height }: ShieldSpriteProps) {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const containerStyle = useAnimatedStyle(() => ({
     position: 'absolute',
     left: slot.x.value - halfWidth,
     top: slot.y.value - halfHeight,
     width,
     height,
     opacity: slot.opacity.value,
+    overflow: 'hidden',
   }));
 
-  const imageStyle = useMemo(
-    () => ({
-      width,
-      height,
-    }),
-    [width, height],
-  );
-
   return (
-    <Animated.View pointerEvents="none" style={animatedStyle}>
-      <Image source={SHIELD_IMAGE_SOURCE} style={imageStyle} resizeMode="contain" />
+    <Animated.View pointerEvents="none" style={containerStyle}>
+      <ShieldAtlasSprite displaySize={width} />
     </Animated.View>
   );
 }

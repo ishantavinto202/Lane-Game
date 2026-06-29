@@ -1,3 +1,13 @@
+import {
+  OBSTACLE_ASSET_MAP,
+  OBSTACLE_BARRIER_SKIN,
+  OBSTACLE_CONE_SKIN,
+  OBSTACLE_CRATE_SKIN,
+  OBSTACLE_PUDDLE_SKIN,
+  OBSTACLE_TIRE_SKIN,
+  type ObstacleCrateSkinDefinition,
+} from '../../assets/definitions/obstacle.assets';
+import { COLLECTIBLE_SPAWN_CONFIG } from '../../config';
 import type { LaneIndex, ObstacleAssetId, WorldBounds } from '../../types';
 
 export interface CoinSpawnRejectedEvent {
@@ -44,6 +54,20 @@ export function expandWorldBounds(bounds: WorldBounds, padding: number): WorldBo
   };
 }
 
+/** True when two axis-aligned bounds overlap or are closer than minSpacingPx. */
+export function boundsWithinMinSpacing(
+  a: WorldBounds,
+  b: WorldBounds,
+  minSpacingPx: number,
+): boolean {
+  if (minSpacingPx <= 0) {
+    return boundsIntersect(a, b);
+  }
+
+  const halfGap = minSpacingPx / 2;
+  return boundsIntersect(expandWorldBounds(a, halfGap), expandWorldBounds(b, halfGap));
+}
+
 /** True when two axis-aligned bounds share any area (touching edges do not count). */
 export function boundsIntersect(a: WorldBounds, b: WorldBounds): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -76,6 +100,59 @@ export function computeEntityVisualBounds(
   };
 }
 
+const OBSTACLE_SKIN_BY_ID: Partial<Record<ObstacleAssetId, ObstacleCrateSkinDefinition>> = {
+  OBSTACLE_TIRE: OBSTACLE_TIRE_SKIN,
+  OBSTACLE_CRATE: OBSTACLE_CRATE_SKIN,
+  OBSTACLE_CONE: OBSTACLE_CONE_SKIN,
+  OBSTACLE_BARRIER: OBSTACLE_BARRIER_SKIN,
+  OBSTACLE_PUDDLE: OBSTACLE_PUDDLE_SKIN,
+};
+
+/**
+ * On-screen obstacle sprite bounds — matches ObstacleSprite layout
+ * (visualOffset + scaled spriteWidth/spriteHeight from anchor center).
+ */
+export function computeObstaclePresentationBounds(
+  x: number,
+  y: number,
+  assetId: ObstacleAssetId,
+): WorldBounds {
+  const skin = OBSTACLE_SKIN_BY_ID[assetId];
+
+  if (!skin) {
+    const asset = OBSTACLE_ASSET_MAP[assetId];
+    return computeEntityVisualBounds(x, y, asset.width, asset.height);
+  }
+
+  const centerX = x + skin.visualOffsetX + skin.spriteWidth / 2;
+  const centerY = y + skin.visualOffsetY + skin.spriteHeight / 2;
+  const halfWidth = (skin.spriteWidth * skin.visualScale) / 2;
+  const halfHeight = (skin.spriteHeight * skin.visualScale) / 2;
+
+  return {
+    left: centerX - halfWidth,
+    right: centerX + halfWidth,
+    top: centerY - halfHeight,
+    bottom: centerY + halfHeight,
+    centerX,
+    centerY,
+  };
+}
+
+/** Total clearance padding for collectible ↔ obstacle spawn validation. */
+export function getObstacleCollectibleClearancePx(assetId: ObstacleAssetId): number {
+  return (
+    COLLECTIBLE_SPAWN_CONFIG.obstacleCollectibleBaseClearancePx +
+    COLLECTIBLE_SPAWN_CONFIG.obstacleCollectibleClearanceByType[assetId]
+  );
+}
+
+export interface ObstacleSpawnBoundsSource {
+  readonly x: number;
+  readonly y: number;
+  readonly assetId: ObstacleAssetId;
+}
+
 /** Minimal bounds source for cross-pickup spawn validation. */
 export interface PickupBoundsSource {
   readonly x: number;
@@ -84,10 +161,11 @@ export interface PickupBoundsSource {
   readonly height: number;
 }
 
-/** Returns first active pickup whose visual bounds overlap the candidate bounds. */
+/** Returns first active pickup that overlaps or violates min spacing with the candidate bounds. */
 export function findPickupBoundsConflict(
   candidateBounds: WorldBounds,
   pickups: readonly PickupBoundsSource[],
+  minSpacingPx = 0,
 ): { bounds: WorldBounds; overlapAmountPx: number } | null {
   for (const pickup of pickups) {
     const otherBounds = computeEntityVisualBounds(
@@ -97,7 +175,7 @@ export function findPickupBoundsConflict(
       pickup.height,
     );
 
-    if (!boundsIntersect(candidateBounds, otherBounds)) {
+    if (!boundsWithinMinSpacing(candidateBounds, otherBounds, minSpacingPx)) {
       continue;
     }
 
@@ -105,6 +183,76 @@ export function findPickupBoundsConflict(
       bounds: otherBounds,
       overlapAmountPx: computeOverlapArea(candidateBounds, otherBounds),
     };
+  }
+
+  return null;
+}
+
+export interface ObstacleCollectibleSpawnConflict {
+  readonly assetId: ObstacleAssetId;
+  readonly obstacleBounds: WorldBounds;
+  readonly overlapAmountPx: number;
+}
+
+/** True when collectible bounds intersect an obstacle presentation bound + type clearance. */
+export function hasCollectibleObstacleSpawnConflict(
+  collectibleBounds: WorldBounds,
+  obstacleX: number,
+  obstacleY: number,
+  obstacleAssetId: ObstacleAssetId,
+): boolean {
+  return (
+    findCollectibleObstacleSpawnConflict(
+      collectibleBounds,
+      obstacleX,
+      obstacleY,
+      obstacleAssetId,
+    ) !== null
+  );
+}
+
+/** Single obstacle collectible spawn conflict — sprite-aware bounds + per-type clearance. */
+export function findCollectibleObstacleSpawnConflict(
+  collectibleBounds: WorldBounds,
+  obstacleX: number,
+  obstacleY: number,
+  obstacleAssetId: ObstacleAssetId,
+): ObstacleCollectibleSpawnConflict | null {
+  const presentationBounds = computeObstaclePresentationBounds(
+    obstacleX,
+    obstacleY,
+    obstacleAssetId,
+  );
+  const clearance = getObstacleCollectibleClearancePx(obstacleAssetId);
+  const bufferedObstacleBounds = expandWorldBounds(presentationBounds, clearance);
+
+  if (!boundsIntersect(collectibleBounds, bufferedObstacleBounds)) {
+    return null;
+  }
+
+  return {
+    assetId: obstacleAssetId,
+    obstacleBounds: presentationBounds,
+    overlapAmountPx: computeOverlapArea(collectibleBounds, bufferedObstacleBounds),
+  };
+}
+
+/** Returns first obstacle that blocks a candidate collectible spawn. */
+export function findObstacleCollectibleSpawnConflict(
+  candidateBounds: WorldBounds,
+  obstacles: readonly ObstacleSpawnBoundsSource[],
+): ObstacleCollectibleSpawnConflict | null {
+  for (const obstacle of obstacles) {
+    const conflict = findCollectibleObstacleSpawnConflict(
+      candidateBounds,
+      obstacle.x,
+      obstacle.y,
+      obstacle.assetId,
+    );
+
+    if (conflict) {
+      return conflict;
+    }
   }
 
   return null;

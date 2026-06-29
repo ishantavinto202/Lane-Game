@@ -25,7 +25,7 @@ src/game/assets/
 - **Launch flow:** tap **Play** → button disables immediately → all Lane PNGs prefetch → `router.push('/lane-game')`
 - **Double-tap guard:** synchronous ref lock + disabled Pressable; only one navigation per launch
 - **Return to Home:** `useFocusEffect` resets Play button to idle when the tab regains focus
-- **Preload scope:** player, road, grass, sidewalk, obstacles, coins (atlas), shield, speed boost, trees, HUD hearts — no Daily Word or audio assets
+- **Preload scope:** player, road, grass, sidewalk, obstacles, coins (atlas), shield (atlas + HUD voxel), speed boost, trees, HUD hearts — no Daily Word or audio assets
 
 ---
 
@@ -49,6 +49,7 @@ Phase 2 adds on-screen controls and smooth lane-based movement. Road continues s
 
 - Home tab → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
 - Tap **←** / **→** (bottom corners) → player moves one lane per tap
+- **Swipe left / right** anywhere on the playfield → same single-lane movement (`source: 'swipe'`)
 - Invalid moves at lane boundaries are ignored (Lane 0 + left = no-op)
 - Successful lane change triggers haptic feedback + car tilt animation
 - Tap **Pause** → scroll and input stop; **Reset** → center lane restored (stays in Playing)
@@ -57,11 +58,12 @@ Phase 2 adds on-screen controls and smooth lane-based movement. Road continues s
 
 ```txt
 src/game/systems/
-  input/InputManager.ts           Central input router (button + future swipe)
-  player/PlayerMotionController.ts Reanimated X + tilt animations
+  input/InputManager.ts           Central input router (button + swipe)
+  input/resolve-swipe-lane-direction.ts Swipe threshold + horizontal dominance gate
 src/components/lane-game/
   controls/ControlButton.tsx      Memoized arrow button with press scale
-  layers/ControlsLayer.tsx        Bottom-left / bottom-right placement
+  controls/LaneSwipeSurface.tsx   Full-screen pan gesture → lane change
+  layers/ControlsLayer.tsx        Swipe surface + bottom-left / bottom-right buttons
 docs/architecture/
   PHASE-2-MOVEMENT.md             Input + animation architecture
 ```
@@ -78,7 +80,7 @@ Phase 3 adds lane hazards, collision detection, distance-based scoring, and best
 - **Spawn bag** holds one of each obstacle type (Tire, Cone, Crate, Barrier, Puddle), shuffled on creation and on each refill; every five successful pulls depletes exactly one full bag with no type starvation
 - **Opening showcase cadence** temporarily uses a 900ms obstacle interval for the first 4 successful spawns, introducing Tire, Cone, Crate, and Barrier early while preserving natural vertical spacing; Puddle enters on the fifth bag pull; normal difficulty-based spawn timing resumes afterward
 - Failed placements are retried via `returnType` before the next bag pull, so a blocked type is not lost or skipped permanently
-- **Pickup-safe placement** — resolved obstacle AABB must not intersect any active coin or shield AABB expanded by 25px (`COIN_CONFIG.obstacleSafetyMarginPx`); lane retry up to `obstacleSpawnLaneRetryLimit` across `obstacleSpawnYRetryOffsetsPx`, then skip spawn
+- **Pickup-safe placement** — obstacle **presentation bounds** (scaled sprite AABB) + per-type clearance must not intersect any active collectible; lane retry up to `obstacleSpawnLaneRetryLimit` across `obstacleSpawnYRetryOffsetsPx`, then skip spawn
 - Fair spawn logic always leaves at least one open lane — no impossible walls
 - Obstacles move downward at game speed via pooled Reanimated shared values (no per-frame React state)
 - Lane-based collision → **Game Over** stops engine, road, and obstacles + heavy haptic
@@ -90,7 +92,9 @@ Phase 3 adds lane hazards, collision detection, distance-based scoring, and best
 
 ```txt
 src/components/lane-game/
-  controls/PauseButton.tsx         Top-right Pause / Resume toggle
+  controls/PauseButton.tsx         Top-right circular pause/resume icon (no label)
+  ui/game-hud.styles.ts            Shared HUD spacing, chrome, and z-index
+  layers/UiLayer.tsx               Top-left score + best (no gameplay state text)
   overlays/GameOverOverlay.tsx     Full-screen game over modal
 ```
 
@@ -134,7 +138,7 @@ On collision: `GameStatus.GameOver` → engine.stop() → haptic → persist bes
 4. **Obstacles** (pooled sprites, `pointerEvents="none"`)
 5. **Player** (animated X + tilt)
 6. **UI** — status + score badge (top center)
-7. **PauseButton** — top-right Pause / Resume
+7. **PauseButton** — top-right circular ⏸ / ▶ icon
 8. **GameOverOverlay** — score, best, Play Again
 9. **Controls** — left/right arrows (disabled when not Playing)
 
@@ -148,7 +152,7 @@ Phase 4 completes the gameplay loop: game over, retry, pause/resume polish, SFX,
 
 ### What You Can Run Today
 
-- **Game Over** — collision freezes engine (road, obstacles, score); centered modal with Score, Best, Runs, **Retry**
+- **Game Over** — collision freezes engine (road, obstacles, score); centered modal with Score, Best, **Retry**
 - **Retry** — no route change, no reload: resets player lane, score, obstacle pool, difficulty timers → `Playing`
 - **Pause / Resume** — top-right button + dimmed pause overlay; resumes from same position
 - **Audio (expo-audio)** — lane-change click, collision crash, game-over fail; preloaded reusable players
@@ -167,7 +171,7 @@ src/game/systems/audio/
 src/game/persistence/
   player-stats.persistence.ts         bestScore + totalRuns + totalDistance
 src/components/lane-game/overlays/
-  GameOverOverlay.tsx                 Score / Best / Runs / Retry
+  GameOverOverlay.tsx                 Score / Best / Retry
   PauseOverlay.tsx                    Dimmed paused state
   CollisionFlashOverlay.tsx           Reanimated red flash
 ```
@@ -209,7 +213,7 @@ GameOverOverlay Retry → restartRun() → resetNonce++ →
 5. **Player**
 6. **Controls** (arrows)
 7. **UI badge** — health hearts (top center) + score/status/best (top left)
-8. **PauseButton** — top-right
+8. **PauseButton** — top-right circular icon
 9. **PauseOverlay** — dimmed when paused
 10. **CollisionFlashOverlay** — red flash on hit
 11. **GameOverOverlay** — modal on game over
@@ -235,7 +239,7 @@ src/game/systems/health/
   HealthSystem.ts                  Health pool + invulnerability timer
   health.contract.ts
 src/components/lane-game/ui/
-  HealthHud.tsx                    Top-center heart PNGs + shield icon (z-index above game world)
+  HealthHud.tsx                    Top-center hearts + shield countdown (amber/red expiry colors)
 ```
 
 ### Damage Flow
@@ -268,10 +272,10 @@ Adds lane collectible coins with independent spawning, overlap collection, and i
 ### What You Can Run Today
 
 - **Coins** spawn independently in lanes 0–2 (38×38 animated atlas from `assets/Coin Animations/texture.png` + `texture.json`, +20% brightness/contrast on atlas texture, pooled Reanimated slots)
-- **Fair placement** — shuffled lane + Y-offset retry; full coin AABB must not intersect any active obstacle AABB expanded by 25px or any active shield pickup AABB; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
-- **Symmetrical spawn validation** — coins and shields reject buffered obstacle bounds at spawn; obstacles reject buffered coin/shield bounds at spawn (same margin, same `computeEntityVisualBounds` helpers)
+- **Fair placement** — shuffled lane + Y-offset retry; collectible sprite bounds must respect **sprite-aware** obstacle presentation bounds + per-type clearance (`computeObstaclePresentationBounds` + `getObstacleCollectibleClearancePx`) and `minCollectibleSpacingPx` from other active collectibles; skip spawn if no valid position (`CoinSpawnRejected` / `CoinSpawnSkipped` dev logs with bounds + overlap area)
+- **Symmetrical spawn validation** — coin, shield, and speed boost share `findObstacleCollectibleSpawnConflict`; obstacles reject collectible spawns using the same presentation-bound + clearance helpers
 - **Collection** — player overlap removes coin, adds **+20 score** instantly, light haptic, floating **`+20`** popup (green)
-- **HUD** — top center shows hearts + shield icon only (no coin wallet)
+- **HUD** — three-zone top bar: **left** large score + best, **center** hearts + shield countdown, **right** circular pause icon (no PLAYING/PAUSED labels)
 - **Retry** — active coin pool cleared, spawning restarts; score resets via `ScoreSystem.reset()`
 
 ### New Modules
@@ -279,7 +283,7 @@ Adds lane collectible coins with independent spawning, overlap collection, and i
 ```txt
 src/game/systems/coin/
   CoinSystem.ts                    Spawn, pool, move, obstacle-safe lanes, collection probes
-  coin-spawn-debug.ts              Expanded-bounds spawn validation + dev rejection logs
+  coin-spawn-debug.ts              Sprite-aware spawn validation + dev rejection logs
   coin-motion.types.ts             Reanimated render bridge
   coin.contract.ts
 src/game/assets/definitions/
@@ -304,6 +308,16 @@ GameEngine.tick() →
 
 Coin collection does **not** call `HealthSystem` or obstacle collision handlers.
 
+### Collectible Spawn Spacing
+
+| Setting | Value |
+|---------|-------|
+| `COLLECTIBLE_SPAWN_CONFIG.minCollectibleSpacingPx` | **48** (coin ↔ shield ↔ speed boost) |
+| `COLLECTIBLE_SPAWN_CONFIG.obstacleCollectibleBaseClearancePx` | **12** (added to every obstacle type) |
+| Per-type obstacle clearance (base + extra) | Puddle **48**, Barrier **40**, Crate **30**, Tyre **30**, Cone **22** |
+
+Validated via `computeObstaclePresentationBounds()` + `findObstacleCollectibleSpawnConflict()` in existing lane/Y retry loops (`coin-spawn-debug.ts`).
+
 ### Engine Tick Flow (Phase 4.2)
 
 ```
@@ -327,8 +341,9 @@ rAF tick →
 6. **Player**
 7. **Controls**
 8. **UI badge** — score/status/best (top left)
-9. **HealthHud** — hearts + shield icon (top center)
-10. **PauseButton** — top-right
+9. **UiLayer** — score + best (top left)
+10. **HealthHud** — hearts + shield countdown (top center)
+11. **PauseButton** — circular icon (top right)
 11. **PauseOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
 
 ### Retry Integration
@@ -345,11 +360,13 @@ Adds a collectible shield that absorbs one obstacle hit without health loss or i
 
 ### What You Can Run Today
 
-- **Shield pickups** spawn in lanes 0–2 (44×44 Shield voxel sprite, pooled Reanimated slots, obstacle-safe + coin-safe placement with lane/Y retry)
-- **Collection** — overlap activates shield (`shieldActive = true`), light haptic, pickup removed; ignored if shield already active
-- **Shield bubble** — semi-transparent blue energy ring follows player above the car while active
+- **Shield pickups** spawn in lanes 0–2 (44×44 **Shield Animations** atlas via shared `ShieldAtlasSprite`, pooled Reanimated slots, obstacle-safe + coin-safe placement with lane/Y retry)
+- **Collection** — overlap activates a **10 second** shield (`ShieldRuntime.activate()`), light haptic, pickup removed; ignored if shield already active
+- **Shield bubble** — `assets/voxel/Bubble.png` voxel overlay follows the player car while active (15% display scale via `SHIELD_CONFIG.bubbleDisplayScale`)
+- **Timed expiry** — HUD shows shield icon + remaining seconds; final **3 seconds** blink HUD icon + bubble at ~4.5 smooth opacity pulses/sec (visual only)
 - **Collision absorb** — when shield active: obstacle destroyed, shield consumed, blue break flash, heavy haptic; no health loss, no damage blink, no red collision flash, no invulnerability
-- **HUD** — Shield voxel icon shown in top badge only while shield is active
+- **Natural expiry** — timer reaching zero removes bubble + HUD immediately (no break flash)
+- **HUD** — `TimedPowerUpHudBadge` in top health badge while shield is active
 - **Retry** — `restartRun()` clears shield state and despawns all shield pickups
 
 ### New Modules
@@ -357,13 +374,23 @@ Adds a collectible shield that absorbs one obstacle hit without health loss or i
 ```txt
 src/game/systems/shield/
   ShieldSystem.ts                  Spawn, pool, move, obstacle-safe lanes, collection probes
+  ShieldRuntime.ts                 Active shield duration timer (single source of truth)
   shield-motion.types.ts           Reanimated render bridge
   shield.contract.ts
+src/game/config/
+  timed-power-up.config.ts         Shared expiry warning + blink tuning
+src/components/lane-game/timed-power-up/
+  TimedPowerUpHudBadge.tsx         Reusable icon + countdown badge
+  useTimedPowerUpExpiryBlink.ts    Smooth final-window opacity pulse hook
+  compute-timed-power-up-display.ts Remaining seconds + warning window helpers
 src/game/assets/definitions/
-  shield.assets.ts                 44×44 pickup + `SHIELD_IMAGE_SOURCE` (Shield voxel PNG)
+  shield.assets.ts                 44×44 hitbox + HUD icon + `SHIELD_BUBBLE_IMAGE_SOURCE` (Bubble.png)
+  shield-atlas.assets.ts           Shield Animations texture.json/png (25 frames @ 18.85 FPS)
 src/components/lane-game/
-  shield/ShieldSprite.tsx          Memoized pooled pickup render
-  shield/ShieldBubble.tsx          Player energy bubble (follows motion shared values)
+  shield/ShieldAtlasSprite.tsx     Shared shield atlas viewport (pickups + guide)
+  shield/ShieldSprite.tsx          World-position wrapper → ShieldAtlasSprite
+  shield/shieldAnimationClock.ts   Shared UI-thread frame loop
+  shield/ShieldBubble.tsx          Bubble.png overlay (follows motion shared values)
   shield/ShieldBreakFlash.tsx      Blue flash on shield consumption
   layers/ShieldLayer.tsx           Between Coin and Obstacle layers
 ```
@@ -372,11 +399,13 @@ src/components/lane-game/
 
 ```
 GameEngine.tick() →
+  ShieldRuntime.update(deltaMs) → syncExpiredShieldState() on natural expiry →
   ShieldSystem.updateShields() →
-  evaluateShieldCollection() → setShieldActive(true) + removeShieldById()
+  evaluateShieldCollection() → ShieldRuntime.activate() + setShieldState(true, 1) + removeShieldById()
   CollisionSystem.evaluate() →
-    if shieldActive → handleShieldAbsorb() → removeObstacle + triggerShieldBreak()
+    if ShieldRuntime.isActive() → handleShieldAbsorb() → removeObstacle + triggerShieldBreak()
     else → handleObstacleHit() (unchanged health path)
+  publishHudIfDue() → setShieldState(active, remainingRatio)
 ```
 
 ### Engine Tick Flow (Phase 4.3A)
@@ -405,8 +434,9 @@ rAF tick →
 7. **Player** + **ShieldBubble** + **ShieldBreakFlash**
 8. **Controls**
 9. **UI badge** — score/status/best (top left)
-10. **HealthHud** — hearts + shield icon (top center)
-11. **PauseButton** — top-right
+10. **UiLayer** — score + best (top left)
+11. **HealthHud** — hearts + shield countdown (top center)
+12. **PauseButton** — circular icon (top right)
 12. **PauseOverlay** / **CountdownOverlay** / **CollisionFlashOverlay** / **GameOverOverlay**
 
 ### Player Sprite Alignment
@@ -424,7 +454,7 @@ spriteX = playerWorldX + visualOffsetX
 spriteY = playerWorldY + visualOffsetY
 ```
 
-The current default uses a `116x140` sprite, `visualOffsetX: -76`, `visualOffsetY: -70`, and the unchanged `60x110` body collision box at `offsetX: -30`, `offsetY: -55`. Shadow pixels never affect lane centering, obstacle hits, shield pickups, coin collection, or any other gameplay collision.
+The current default uses a `116x140` sprite, `visualOffsetX: -72.52` (+3% sprite-width nudge right from `-76`), `visualOffsetY: -70`, and the unchanged `60x110` body collision box at `offsetX: -30`, `offsetY: -55`. Shadow pixels never affect lane centering, obstacle hits, shield pickups, coin collection, or any other gameplay collision.
 
 ### Crate Obstacle Sprite Alignment
 
@@ -745,13 +775,14 @@ A minimal in-game reference for every collectible reward and obstacle penalty �
 
 - **Pause screen** — **Resume** primary button + **ⓘ Scoring Guide** secondary button below
 - **Game Over screen** — **Play Again** primary button + **ⓘ Scoring Guide** secondary button below
-- **Modal** — compact premium card (~66% viewport height, max 520px), blur + dim overlay, scrollable on small screens, tap outside or **×** to dismiss
-- **Layout** — horizontal row cards: **64×64** icon slot, bold title + muted description, right-aligned score/health stats
-- **Header** — bold **Scoring Guide** title, phosphor **×** close button, hairline divider
-- **Sections** — `⭐ Collectibles` and `🚧 Obstacles` labels inside grouped card lists with row separators
-- **Typography** — rewards as large green `+N`, penalties as large red `-N`, health as smaller red `❤ -N` beneath score
-- **Data source** — `scoring-guide.content.ts` reads `COIN_CONFIG.scoreReward` and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
-- **Assets** — animated `CoinAtlasSprite` + `SpeedBoostAtlasSprite` for collectibles; modal-only voxel PNGs for obstacles (`assets/Voxel asset guide/`) with per-icon shadow compensation
+- **Modal** — compact card (~58% viewport height, max 460px), blur + dim overlay, scrollable on small screens, tap outside or **×** to dismiss
+- **Layout** — three-column rows: **48×48** centered icon, bold title + muted subtitle, right-aligned inline penalties
+- **Header** — bold **Scoring Guide** title, phosphor **×** close button (top-right), hairline divider
+- **Sections** — `Collectibles` and `Obstacles` labels with extra whitespace between groups; hairline row dividers (no heavy card borders)
+- **Typography** — rewards as green `+N`; penalties as large red `-N`; health `❤ -N` inline beside score on the same line (Crate, Barrier)
+- **Data source** — `scoring-guide.content.ts` reads `COIN_CONFIG`, `SHIELD_CONFIG`, `SPEED_BOOST_CONFIG`, and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
+- **Collectibles** — Coin, Shield (`Absorbs one hit · lasts 10s`), Speed Boost (`2× speed · lasts 3s`); durations sourced from config
+- **Assets** — static voxel PNGs for all collectibles and obstacles in `assets/Voxel asset guide/` at fit scale inside **48×48** slots
 - In-game sprites unchanged — gameplay atlases and obstacle skins untouched
 - Game stays paused / game-over while the guide is open
 
@@ -763,14 +794,19 @@ src/game/content/
 src/game/assets/definitions/
   scoring-guide-voxel.assets.ts    Modal-only voxel PNG sources (not used in gameplay)
 src/components/lane-game/scoring-guide/
-  ScoringGuideModal.tsx              Compact card layout, × close, row cards + stats column
+  ScoringGuideModal.tsx              Compact three-column rows + inline penalties
   ScoringGuideButton.tsx             Secondary entry-point button
-  ScoringGuideCoinIcon.tsx           Animated coin atlas preview (46px in 64px slot)
-  ScoringGuideSpeedBoostIcon.tsx     Animated thunder atlas preview (46px in 64px slot)
+  ScoringGuideCoinIcon.tsx           Static Coin.png preview
+  ScoringGuideShieldIcon.tsx         Static Sheld Guide.png preview
+  ScoringGuideSpeedBoostIcon.tsx     Static Blue_Thunder_Asset.png preview
   ScoringGuideStaticIcon.tsx         Voxel obstacle PNG with shadow compensation
-  ScoringGuideIconSlot.tsx           Shared 64×64 rounded icon container
+  ScoringGuideIconSlot.tsx           Shared 48×48 centered icon container
 src/components/lane-game/coin/
   CoinAtlasSprite.tsx                Shared coin atlas viewport + clock
+src/components/lane-game/shield/
+  ShieldAtlasSprite.tsx              Shared shield atlas viewport (pickups + guide)
+  ShieldSprite.tsx                   World-position wrapper → ShieldAtlasSprite
+  shieldAnimationClock.ts            Shared UI-thread frame loop
 src/components/lane-game/speed-boost/
   SpeedBoostAtlasSprite.tsx          Shared thunder atlas viewport (pickups + guide)
   SpeedBoostSprite.tsx               World-position wrapper → SpeedBoostAtlasSprite
@@ -783,6 +819,7 @@ src/game/assets/
 src/game/assets/
   texture-atlas.build.ts             Shared atlas frame/layout builders
   definitions/speed-boost-atlas.assets.ts  Thunder Animations texture.json/png
+  definitions/shield-atlas.assets.ts       Shield Animations texture.json/png
 src/components/lane-game/overlays/
   PauseOverlay.tsx                   Resume + Scoring Guide (updated)
   GameOverOverlay.tsx                Play Again + Scoring Guide (updated)
@@ -815,7 +852,7 @@ src/game/assets/definitions/
 src/components/lane-game/
   speed-boost/SpeedBoostAtlasSprite.tsx Shared thunder atlas viewport
   speed-boost/SpeedBoostSprite.tsx      World-position wrapper → atlas sprite
-  speed-boost/speedBoostAnimationClock.ts Shared frame loop (14.5 FPS)
+  speed-boost/speedBoostAnimationClock.ts Shared frame loop (18.85 FPS)
   layers/SpeedBoostLayer.tsx       Starts atlas clock on mount
   ui/SpeedBoostHud.tsx             Static Blue Thunder HUD icon + timer + progress bar
 ```
@@ -862,7 +899,7 @@ GameEngine.tick()
 | **Zustand store** | Status + score + health + run coins + run stats + damage flash | ✅ |
 | **DecorationSystem** | Cosmetic roadside trees on grass strips (pooled, no collision) | ✅ |
 
-**Not implemented yet:** swipe gestures, settings persistence UI.
+**Not implemented yet:** settings persistence UI.
 
 ### Roadside Tree Decorations (cosmetic only)
 
@@ -933,15 +970,16 @@ src/game/config/
 All movement flows through **`InputManager.requestLaneChange(direction, source)`**:
 
 ```
-ControlButton → InputManager → PlayerSystem.tryLaneChange()
-                             → PlayerMotionController.animateToLane()
-                             → expo-haptics (on success)
+ControlButton / LaneSwipeSurface → InputManager.requestLaneChange(direction, source)
+                                  → PlayerSystem.tryLaneChange()
+                                  → PlayerMotionController.animateToLane()
+                                  → expo-haptics (on success)
 ```
 
-- **Button controls** wired now (`source: 'button'`)
-- **Swipe controls** will call the same API with `source: 'swipe'` — no duplicated logic
-- Input enabled only when `GameStatus.Playing` (disabled during `Countdown`)
-- Debounce: **50ms** between accepted requests
+- **Button controls** (`source: 'button'`) — unchanged bottom-corner arrows
+- **Swipe controls** (`source: 'swipe'`) — horizontal pan on playfield; min **60px** travel, horizontal movement must exceed vertical by **1.5×**; one lane per swipe; boundary swipes ignored
+- Input enabled only when `GameStatus.Playing` (disabled during `Countdown`, pause, game over)
+- Debounce: **50ms** between accepted requests (shared by buttons and swipes)
 
 ### Animation Architecture
 
@@ -966,7 +1004,7 @@ Player position uses Reanimated shared values (`playerX`, `playerY`, `playerTilt
 7. **Roadside trees** (DecorationLayer — cosmetic, top of world stack)
 8. **Controls** (lane buttons)
 9. **UI** — status + score badge (top center)
-10. **PauseButton** — top-right Pause / Resume
+10. **PauseButton** — top-right circular icon
 11. **GameOverOverlay** — score, best, Play Again
 
 ### Performance Decisions (Phase 2)

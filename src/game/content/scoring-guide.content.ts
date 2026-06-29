@@ -3,20 +3,22 @@ import type { ImageSourcePropType } from 'react-native';
 import type { ScoringGuideVisualBounds } from '../assets/definitions/scoring-guide-voxel.assets';
 
 import {
+  getScoringGuideCollectibleImageSource,
+  getScoringGuideCollectibleVisualBounds,
   getScoringGuideObstacleImageSource,
   getScoringGuideObstacleVisualBounds,
+  type ScoringGuideCollectibleId,
 } from '../assets/definitions/scoring-guide-voxel.assets';
-import { COIN_CONFIG, OBSTACLE_PENALTY_CONFIG } from '../config';
+import { COIN_CONFIG, OBSTACLE_PENALTY_CONFIG, SHIELD_CONFIG, SPEED_BOOST_CONFIG } from '../config';
 import type { ObstacleAssetId } from '../types';
 
-export type ScoringGuideCollectibleKind = 'coin' | 'speed-boost';
-
 export interface ScoringGuideCollectibleEntry {
-  readonly id: string;
+  readonly id: ScoringGuideCollectibleId;
   readonly name: string;
-  readonly kind: ScoringGuideCollectibleKind;
   readonly scoreReward: number;
   readonly guideDescription: string;
+  readonly imageSource: ImageSourcePropType;
+  readonly visualBounds: ScoringGuideVisualBounds;
 }
 
 export interface ScoringGuideObstacleEntry {
@@ -28,6 +30,9 @@ export interface ScoringGuideObstacleEntry {
   readonly scorePenalty: number;
   readonly healthLoss: number;
 }
+
+const SHIELD_DURATION_SECONDS = SHIELD_CONFIG.durationMs / 1000;
+const SPEED_BOOST_DURATION_SECONDS = SPEED_BOOST_CONFIG.durationMs / 1000;
 
 const OBSTACLE_GUIDE_ORDER: readonly ObstacleAssetId[] = [
   'OBSTACLE_CONE',
@@ -58,16 +63,26 @@ export const SCORING_GUIDE_COLLECTIBLES: readonly ScoringGuideCollectibleEntry[]
   {
     id: 'coin',
     name: 'Coin',
-    kind: 'coin',
     scoreReward: COIN_CONFIG.scoreReward,
     guideDescription: 'Collect for points',
+    imageSource: getScoringGuideCollectibleImageSource('coin'),
+    visualBounds: getScoringGuideCollectibleVisualBounds('coin'),
   },
   {
-    id: 'speed-boost',
-    name: 'Speed Boost',
-    kind: 'speed-boost',
+    id: 'shield',
+    name: 'Shield',
     scoreReward: 0,
-    guideDescription: 'Temporary burst of speed',
+    guideDescription: `Absorbs one hit · lasts ${SHIELD_DURATION_SECONDS}s`,
+    imageSource: getScoringGuideCollectibleImageSource('shield'),
+    visualBounds: getScoringGuideCollectibleVisualBounds('shield'),
+  },
+  {
+    id: 'speedBoost',
+    name: 'Speed Boost',
+    scoreReward: 0,
+    guideDescription: `2× speed · lasts ${SPEED_BOOST_DURATION_SECONDS}s`,
+    imageSource: getScoringGuideCollectibleImageSource('speedBoost'),
+    visualBounds: getScoringGuideCollectibleVisualBounds('speedBoost'),
   },
 ] as const;
 

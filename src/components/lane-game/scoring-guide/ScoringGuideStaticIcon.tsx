@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Image, type ImageSourcePropType } from 'react-native';
 
-import { ScoringGuideIconSlot } from './ScoringGuideIconSlot';
+import { SCORING_GUIDE_ICON_SIZE, ScoringGuideIconSlot } from './ScoringGuideIconSlot';
 import {
   computeScoringGuideIconLayout,
   type ScoringGuideVisualBounds,
@@ -10,12 +10,17 @@ import {
 export interface ScoringGuideStaticIconProps {
   readonly source: ImageSourcePropType;
   readonly visualBounds: ScoringGuideVisualBounds;
+  readonly displayScale?: number;
 }
 
-function ScoringGuideStaticIconComponent({ source, visualBounds }: ScoringGuideStaticIconProps) {
+function ScoringGuideStaticIconComponent({
+  source,
+  visualBounds,
+  displayScale = 1,
+}: ScoringGuideStaticIconProps) {
   const layout = useMemo(
-    () => computeScoringGuideIconLayout(visualBounds),
-    [visualBounds],
+    () => computeScoringGuideIconLayout(visualBounds, SCORING_GUIDE_ICON_SIZE, displayScale),
+    [displayScale, visualBounds],
   );
 
   const imageStyle = useMemo(

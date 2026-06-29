@@ -1,19 +1,24 @@
 import { COIN_ASSET } from '../../assets/definitions/coin.assets';
-import { COIN_CONFIG } from '../../config';
-import type { CoinEntity, LaneIndex, ObstacleEntity, ShieldEntity } from '../../types';
+import { COIN_CONFIG, COLLECTIBLE_SPAWN_CONFIG, SHIELD_CONFIG, SPEED_BOOST_CONFIG } from '../../config';
+import type {
+  CoinEntity,
+  LaneIndex,
+  ObstacleEntity,
+  ShieldEntity,
+  SpeedBoostEntity,
+} from '../../types';
 import type { CollisionProbe } from '../../types';
 import { computeWorldBounds, boundsOverlap } from '../../utils/collision-bounds';
 import type { LaneSystem } from '../lane/LaneSystem';
 
 import type { CoinRenderBridge } from './coin-motion.types';
 import {
-  boundsIntersect,
   computeEntityVisualBounds,
-  computeOverlapArea,
-  expandWorldBounds,
+  findObstacleCollectibleSpawnConflict,
   findPickupBoundsConflict,
   logCoinSpawnRejected,
   logCoinSpawnSkipped,
+  type PickupBoundsSource,
 } from './coin-spawn-debug';
 
 interface MutableCoinSlot {
@@ -94,6 +99,7 @@ export class CoinSystem {
     speedPxPerSec: number,
     activeObstacles: readonly ObstacleEntity[],
     activeShields: readonly ShieldEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
   ): readonly CoinEntity[] {
     if (!this.layout || !this.laneSystem) {
       return [];
@@ -104,7 +110,7 @@ export class CoinSystem {
     while (this.spawnAccumulatorMs >= this.nextSpawnIntervalMs) {
       this.spawnAccumulatorMs -= this.nextSpawnIntervalMs;
       this.nextSpawnIntervalMs = randomSpawnIntervalMs();
-      this.trySpawn(activeObstacles, activeShields, speedPxPerSec);
+      this.trySpawn(activeObstacles, activeShields, activeSpeedBoosts, speedPxPerSec);
     }
 
     const deltaPx = (speedPxPerSec * deltaMs) / 1000;
@@ -199,6 +205,7 @@ export class CoinSystem {
   private trySpawn(
     activeObstacles: readonly ObstacleEntity[],
     activeShields: readonly ShieldEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
     speedPxPerSec: number,
   ): void {
     if (!this.layout || !this.laneSystem) {
@@ -209,7 +216,11 @@ export class CoinSystem {
       return;
     }
 
-    const spawnPosition = this.pickSpawnPosition(activeObstacles, activeShields);
+    const spawnPosition = this.pickSpawnPosition(
+      activeObstacles,
+      activeShields,
+      activeSpeedBoosts,
+    );
 
     if (spawnPosition === null) {
       return;
@@ -262,9 +273,11 @@ export class CoinSystem {
   private pickSpawnPosition(
     activeObstacles: readonly ObstacleEntity[],
     activeShields: readonly ShieldEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
   ): { lane: LaneIndex; spawnY: number } | null {
     const baseSpawnY = this.layout!.spawnY;
     const shuffledLanes = shuffleLanes([0, 1, 2]);
+    const otherCollectibles = this.toCollectibleBoundsSources(activeShields, activeSpeedBoosts);
 
     for (const yOffset of COIN_CONFIG.spawnYRetryOffsetsPx) {
       const spawnY = baseSpawnY + yOffset;
@@ -276,7 +289,11 @@ export class CoinSystem {
 
         const coinBounds = this.computeSpawnCoinBounds(lane, spawnY);
 
-        const pickupConflict = findPickupBoundsConflict(coinBounds, activeShields);
+        const pickupConflict = findPickupBoundsConflict(
+          coinBounds,
+          otherCollectibles,
+          COLLECTIBLE_SPAWN_CONFIG.minCollectibleSpacingPx,
+        );
         if (pickupConflict) {
           continue;
         }
@@ -285,8 +302,8 @@ export class CoinSystem {
         if (rejection) {
           logCoinSpawnRejected({
             lane,
-            coinBounds: rejection.coinBounds,
-            obstacleType: rejection.obstacleType,
+            coinBounds,
+            obstacleType: rejection.assetId,
             obstacleBounds: rejection.obstacleBounds,
             overlapAmountPx: rejection.overlapAmountPx,
           });
@@ -329,36 +346,32 @@ export class CoinSystem {
   private findSpawnObstacleConflict(
     coinBounds: ReturnType<typeof computeEntityVisualBounds>,
     activeObstacles: readonly ObstacleEntity[],
-  ): {
-    obstacleType: ObstacleEntity['assetId'];
-    coinBounds: ReturnType<typeof computeEntityVisualBounds>;
-    obstacleBounds: ReturnType<typeof computeEntityVisualBounds>;
-    overlapAmountPx: number;
-  } | null {
-    const margin = COIN_CONFIG.obstacleSafetyMarginPx;
+  ) {
+    return findObstacleCollectibleSpawnConflict(coinBounds, activeObstacles);
+  }
 
-    for (const obstacle of activeObstacles) {
-      const obstacleCore = computeEntityVisualBounds(
-        obstacle.x,
-        obstacle.y,
-        obstacle.width,
-        obstacle.height,
-      );
-      const bufferedObstacleBounds = expandWorldBounds(obstacleCore, margin);
-
-      if (!boundsIntersect(coinBounds, bufferedObstacleBounds)) {
-        continue;
-      }
-
-      return {
-        obstacleType: obstacle.assetId,
-        coinBounds,
-        obstacleBounds: obstacleCore,
-        overlapAmountPx: computeOverlapArea(coinBounds, bufferedObstacleBounds),
-      };
-    }
-
-    return null;
+  private toCollectibleBoundsSources(
+    activeShields: readonly ShieldEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
+  ): readonly PickupBoundsSource[] {
+    return [
+      ...activeShields.map(
+        (shield): PickupBoundsSource => ({
+          x: shield.x,
+          y: shield.y,
+          width: SHIELD_CONFIG.size,
+          height: SHIELD_CONFIG.size,
+        }),
+      ),
+      ...activeSpeedBoosts.map(
+        (speedBoost): PickupBoundsSource => ({
+          x: speedBoost.x,
+          y: speedBoost.y,
+          width: SPEED_BOOST_CONFIG.size,
+          height: SPEED_BOOST_CONFIG.size,
+        }),
+      ),
+    ];
   }
 
   private claimRenderIndex(): number | null {

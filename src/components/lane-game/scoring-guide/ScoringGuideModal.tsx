@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import { X } from 'phosphor-react-native';
-import { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -18,21 +18,17 @@ import {
   type ScoringGuideObstacleEntry,
 } from '@/src/game/content/scoring-guide.content';
 
-import { ensureCoinAnimationClock } from '../coin/coinAnimationClock';
-import { ensureSpeedBoostAnimationClock } from '../speed-boost/speedBoostAnimationClock';
-
-import { ScoringGuideCoinIcon } from './ScoringGuideCoinIcon';
-import { ScoringGuideSpeedBoostIcon } from './ScoringGuideSpeedBoostIcon';
 import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
+import { SCORING_GUIDE_COLLECTIBLE_ICON_SCALE, SCORING_GUIDE_OBSTACLE_ICON_SCALE } from './ScoringGuideIconSlot';
 
 const REWARD_COLOR = '#34C759';
 const PENALTY_COLOR = '#FF453A';
-const DESCRIPTION_COLOR = 'rgba(255, 255, 255, 0.48)';
+const SUBTITLE_COLOR = 'rgba(255, 255, 255, 0.45)';
 const CLOSE_ICON_COLOR = 'rgba(255, 255, 255, 0.72)';
 
-const HORIZONTAL_PADDING = 26;
-const CARD_MAX_HEIGHT_RATIO = 0.66;
-const CARD_MAX_HEIGHT_PX = 520;
+const HORIZONTAL_PADDING = 20;
+const CARD_MAX_HEIGHT_RATIO = 0.58;
+const CARD_MAX_HEIGHT_PX = 460;
 
 export interface ScoringGuideModalProps {
   readonly visible: boolean;
@@ -42,7 +38,7 @@ export interface ScoringGuideModalProps {
 interface GuideRowProps {
   readonly icon: ReactNode;
   readonly title: string;
-  readonly description: string;
+  readonly subtitle: string;
   readonly scoreLabel?: string;
   readonly scoreTone?: 'reward' | 'penalty';
   readonly healthLabel?: string;
@@ -52,33 +48,50 @@ interface GuideRowProps {
 function GuideRow({
   icon,
   title,
-  description,
+  subtitle,
   scoreLabel,
   scoreTone,
   healthLabel,
   isLast = false,
 }: GuideRowProps) {
   return (
-    <View style={[styles.rowCard, !isLast && styles.rowCardWithSeparator]}>
-      {icon}
-      <View style={styles.rowBody}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        <Text style={styles.rowDescription}>{description}</Text>
+    <View style={[styles.row, !isLast && styles.rowDivider]}>
+      <View style={styles.iconColumn}>{icon}</View>
+      <View style={styles.textColumn}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.rowSubtitle} numberOfLines={1}>
+          {subtitle}
+        </Text>
       </View>
-      <View style={styles.rowStats}>
-        {scoreLabel ? (
-          <Text
-            style={[
-              styles.scoreValue,
-              scoreTone === 'reward' && styles.rewardText,
-              scoreTone === 'penalty' && styles.penaltyText,
-            ]}
-          >
-            {scoreLabel}
-          </Text>
-        ) : null}
-        {healthLabel ? <Text style={styles.healthValue}>{healthLabel}</Text> : null}
-      </View>
+      {healthLabel || scoreLabel ? (
+        <View style={styles.penaltyColumn}>
+          {healthLabel ? (
+            <View style={styles.healthBadge}>
+              <Text style={styles.healthPenalty}>{healthLabel}</Text>
+            </View>
+          ) : null}
+          {scoreLabel ? (
+            <View
+              style={[
+                styles.scoreBadge,
+                scoreTone === 'reward' && styles.scoreBadgeReward,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.scorePenalty,
+                  scoreTone === 'reward' && styles.rewardText,
+                  scoreTone === 'penalty' && styles.penaltyText,
+                ]}
+              >
+                {scoreLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -90,13 +103,16 @@ function CollectibleRow({
   readonly entry: ScoringGuideCollectibleEntry;
   readonly isLast: boolean;
 }) {
-  const icon = useMemo(() => {
-    if (entry.kind === 'coin') {
-      return <ScoringGuideCoinIcon />;
-    }
-
-    return <ScoringGuideSpeedBoostIcon />;
-  }, [entry.kind]);
+  const icon = useMemo(
+    () => (
+      <ScoringGuideStaticIcon
+        source={entry.imageSource}
+        visualBounds={entry.visualBounds}
+        displayScale={SCORING_GUIDE_COLLECTIBLE_ICON_SCALE}
+      />
+    ),
+    [entry.imageSource, entry.visualBounds],
+  );
 
   const scoreLabel = useMemo(() => {
     if (entry.scoreReward <= 0) {
@@ -110,7 +126,7 @@ function CollectibleRow({
     <GuideRow
       icon={icon}
       title={entry.name}
-      description={entry.guideDescription}
+      subtitle={entry.guideDescription}
       scoreLabel={scoreLabel}
       scoreTone="reward"
       isLast={isLast}
@@ -140,6 +156,7 @@ function ObstacleRow({
       <ScoringGuideStaticIcon
         source={entry.imageSource}
         visualBounds={entry.visualBounds}
+        displayScale={SCORING_GUIDE_OBSTACLE_ICON_SCALE}
       />
     ),
     [entry.imageSource, entry.visualBounds],
@@ -149,7 +166,7 @@ function ObstacleRow({
     <GuideRow
       icon={icon}
       title={entry.name}
-      description={entry.guideDescription}
+      subtitle={entry.guideDescription}
       scoreLabel={scoreLabel}
       scoreTone="penalty"
       healthLabel={healthLabel}
@@ -170,15 +187,6 @@ function ScoringGuideModalComponent({ visible, onClose }: ScoringGuideModalProps
     [windowHeight],
   );
 
-  useEffect(() => {
-    if (!visible) {
-      return;
-    }
-
-    ensureCoinAnimationClock();
-    ensureSpeedBoostAnimationClock();
-  }, [visible]);
-
   return (
     <Modal
       visible={visible}
@@ -188,7 +196,7 @@ function ScoringGuideModalComponent({ visible, onClose }: ScoringGuideModalProps
       onRequestClose={handleClose}
     >
       <View style={styles.overlayRoot}>
-        <BlurView intensity={28} tint="dark" style={StyleSheet.absoluteFillObject} />
+        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFillObject} />
         <View style={styles.dimLayer} />
 
         <View style={styles.backdrop}>
@@ -209,10 +217,9 @@ function ScoringGuideModalComponent({ visible, onClose }: ScoringGuideModalProps
                 hitSlop={12}
                 style={styles.closeButton}
               >
-                <X size={22} color={CLOSE_ICON_COLOR} weight="bold" />
+                <X size={20} color={CLOSE_ICON_COLOR} weight="bold" />
               </Pressable>
             </View>
-            <View style={styles.headerDivider} />
 
             <ScrollView
               style={styles.scroll}
@@ -220,8 +227,8 @@ function ScoringGuideModalComponent({ visible, onClose }: ScoringGuideModalProps
               showsVerticalScrollIndicator={false}
               bounces={false}
             >
-              <Text style={styles.sectionTitle}>⭐ Collectibles</Text>
-              <View style={styles.sectionBody}>
+              <Text style={styles.sectionTitle}>Collectibles</Text>
+              <View style={styles.sectionList}>
                 {SCORING_GUIDE_COLLECTIBLES.map((entry, index, items) => (
                   <CollectibleRow
                     key={entry.id}
@@ -231,8 +238,8 @@ function ScoringGuideModalComponent({ visible, onClose }: ScoringGuideModalProps
                 ))}
               </View>
 
-              <Text style={[styles.sectionTitle, styles.obstaclesSectionTitle]}>🚧 Obstacles</Text>
-              <View style={styles.sectionBody}>
+              <Text style={[styles.sectionTitle, styles.obstaclesSectionTitle]}>Obstacles</Text>
+              <View style={styles.sectionList}>
                 {SCORING_GUIDE_OBSTACLES.map((entry, index, items) => (
                   <ObstacleRow
                     key={entry.id}
@@ -255,22 +262,20 @@ const styles = StyleSheet.create({
   },
   dimLayer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdrop: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
   card: {
     width: '100%',
-    maxWidth: 380,
-    borderRadius: 22,
-    backgroundColor: 'rgba(24, 24, 30, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    maxWidth: 360,
+    borderRadius: 20,
+    backgroundColor: 'rgba(22, 22, 28, 0.96)',
     overflow: 'hidden',
     zIndex: 1,
   },
@@ -279,94 +284,109 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 18,
-    paddingBottom: 12,
-  },
-  headerDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   scroll: {
     flexGrow: 0,
   },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 14,
-    paddingBottom: 18,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
   sectionTitle: {
-    color: 'rgba(255, 255, 255, 0.72)',
-    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.2,
-    marginBottom: 8,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   obstaclesSectionTitle: {
-    marginTop: 16,
+    marginTop: 22,
   },
-  sectionBody: {
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+  sectionList: {
     overflow: 'hidden',
   },
-  rowCard: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 50,
+    paddingVertical: 6,
     gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 72,
   },
-  rowCardWithSeparator: {
+  rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
   },
-  rowBody: {
+  iconColumn: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textColumn: {
     flex: 1,
     justifyContent: 'center',
-    gap: 2,
-    paddingRight: 8,
+    gap: 1,
+    paddingRight: 4,
   },
   rowTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.1,
   },
-  rowDescription: {
-    color: DESCRIPTION_COLOR,
+  rowSubtitle: {
+    color: SUBTITLE_COLOR,
     fontSize: 12,
     fontWeight: '500',
-    lineHeight: 16,
+    lineHeight: 15,
   },
-  rowStats: {
-    minWidth: 52,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 2,
+  penaltyColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    flexShrink: 0,
   },
-  scoreValue: {
-    fontSize: 20,
+  healthBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+  },
+  scoreBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  scoreBadgeReward: {
+    backgroundColor: 'rgba(52, 199, 89, 0.12)',
+  },
+  scorePenalty: {
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.2,
-    lineHeight: 24,
   },
   rewardText: {
     color: REWARD_COLOR,
@@ -374,11 +394,10 @@ const styles = StyleSheet.create({
   penaltyText: {
     color: PENALTY_COLOR,
   },
-  healthValue: {
+  healthPenalty: {
     color: PENALTY_COLOR,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

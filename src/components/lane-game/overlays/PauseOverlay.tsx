@@ -38,7 +38,6 @@ function PauseOverlayComponent() {
       <View pointerEvents="box-none" style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>{label}</Text>
-          <Text style={styles.subtitle}>Take a breather — resume when ready.</Text>
 
           <Pressable
             accessibilityRole="button"
@@ -85,14 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 2,
     textTransform: 'uppercase',
-  },
-  subtitle: {
-    marginTop: 8,
     marginBottom: 24,
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
   },
   resumeButton: {
     width: '100%',

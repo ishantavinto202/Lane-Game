@@ -42,6 +42,7 @@ export type { CoinRenderBridge, CoinRenderSlot } from './coin/coin-motion.types'
 
 export type { ShieldSystemContract } from './shield/shield.contract';
 export { ShieldSystem, createShieldCollisionProbes } from './shield/ShieldSystem';
+export { ShieldRuntime } from './shield/ShieldRuntime';
 export type { ShieldRenderBridge, ShieldRenderSlot } from './shield/shield-motion.types';
 
 export type { SpeedBoostSystemContract } from './speed-boost/speed-boost.contract';

@@ -35,6 +35,7 @@ export interface GameStoreState {
   readonly nextObstacleEffectFloaterId: number;
   readonly nextFloatingScoreSequence: number;
   readonly shieldActive: boolean;
+  readonly shieldRemainingRatio: number;
   readonly shieldBreakNonce: number;
   readonly speedBoostActive: boolean;
   readonly speedBoostRemainingRatio: number;
@@ -56,7 +57,7 @@ export interface GameStoreActions {
   readonly dismissCoinScoreFloater: (id: number) => void;
   readonly triggerObstacleEffectFloater: (x: number, y: number, label: string) => void;
   readonly dismissObstacleEffectFloater: (id: number) => void;
-  readonly setShieldActive: (shieldActive: boolean) => void;
+  readonly setShieldState: (active: boolean, remainingRatio: number) => void;
   readonly triggerShieldBreak: () => void;
   readonly clearShieldState: () => void;
   readonly setSpeedBoostState: (active: boolean, remainingRatio: number) => void;

@@ -41,6 +41,7 @@ import {
   createSpeedBoostCollisionProbes,
 } from '../systems/speed-boost/SpeedBoostSystem';
 import { SpeedBoostRuntime } from '../systems/speed-boost/SpeedBoostRuntime';
+import { ShieldRuntime } from '../systems/shield/ShieldRuntime';
 import type { SpeedBoostRenderBridge } from '../systems/speed-boost/speed-boost-motion.types';
 import { RoadSystem } from '../systems/road/RoadSystem';
 import { ScoreSystem } from '../systems/score/ScoreSystem';
@@ -72,6 +73,7 @@ export class GameEngine {
   readonly speedBoostSystem: SpeedBoostSystem;
   readonly decorationSystem: DecorationSystem;
   readonly speedBoostRuntime = new SpeedBoostRuntime();
+  readonly shieldRuntime = new ShieldRuntime();
   readonly collisionSystem = new CollisionSystem();
   readonly scoreSystem = new ScoreSystem();
   readonly healthSystem = new HealthSystem();
@@ -126,6 +128,7 @@ export class GameEngine {
     this.speedBoostSystem.reset();
     this.decorationSystem.reset();
     this.speedBoostRuntime.reset();
+    this.shieldRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
@@ -183,6 +186,7 @@ export class GameEngine {
     this.speedBoostSystem.reset();
     this.decorationSystem.reset();
     this.speedBoostRuntime.reset();
+    this.shieldRuntime.reset();
     this.collisionSystem.reset();
     this.scoreSystem.reset();
     this.healthSystem.reset();
@@ -250,6 +254,8 @@ export class GameEngine {
     this.elapsedMs += deltaMs;
     this.healthSystem.update(deltaMs);
     this.speedBoostRuntime.update(deltaMs);
+    this.shieldRuntime.update(deltaMs);
+    this.syncExpiredShieldState();
 
     const difficulty = evaluateDifficulty(this.elapsedMs);
     const effectiveSpeed = difficulty.speedPxPerSec * this.speedBoostRuntime.getSpeedMultiplier();
@@ -261,15 +267,28 @@ export class GameEngine {
 
     const activeCoinsBeforeObstacles = this.coinSystem.getActiveCoins();
     const activeShields = this.shieldSystem.getActiveShields();
+    const activeSpeedBoosts = this.speedBoostSystem.getActiveSpeedBoosts();
     const obstacles = this.obstacleSystem.updateObstacles(
       deltaMs,
       effectiveSpeed,
       activeCoinsBeforeObstacles,
       activeShields,
     );
-    this.coinSystem.updateCoins(deltaMs, effectiveSpeed, obstacles, activeShields);
+    this.coinSystem.updateCoins(
+      deltaMs,
+      effectiveSpeed,
+      obstacles,
+      activeShields,
+      activeSpeedBoosts,
+    );
     const activeCoins = this.coinSystem.getActiveCoins();
-    this.shieldSystem.updateShields(deltaMs, effectiveSpeed, obstacles, activeCoins);
+    this.shieldSystem.updateShields(
+      deltaMs,
+      effectiveSpeed,
+      obstacles,
+      activeCoins,
+      activeSpeedBoosts,
+    );
     this.speedBoostSystem.updateSpeedBoosts(
       deltaMs,
       effectiveSpeed,
@@ -298,7 +317,7 @@ export class GameEngine {
       const collision = this.collisionSystem.evaluate(playerProbe, obstacleProbes);
 
       if (collision) {
-        if (useGameStore.getState().shieldActive) {
+        if (this.shieldRuntime.isActive()) {
           this.handleShieldAbsorb(collision);
         } else {
           this.handleObstacleHit(collision);
@@ -325,14 +344,28 @@ export class GameEngine {
       this.speedBoostRuntime.isActive(),
       this.speedBoostRuntime.getRemainingRatio(),
     );
+    useGameStore.getState().setShieldState(
+      this.shieldRuntime.isActive(),
+      this.shieldRuntime.getRemainingRatio(),
+    );
+  }
+
+  /** Clears HUD/world shield visuals immediately when the runtime timer expires. */
+  private syncExpiredShieldState(): void {
+    if (this.shieldRuntime.isActive() || !useGameStore.getState().shieldActive) {
+      return;
+    }
+
+    useGameStore.getState().clearShieldState();
   }
 
   private handleShieldAbsorb(collision: CollisionEvent): void {
-    if (this.gameOverTriggered || !useGameStore.getState().shieldActive) {
+    if (this.gameOverTriggered || !this.shieldRuntime.isActive()) {
       return;
     }
 
     this.obstacleSystem.removeObstacleById(collision.obstacleId);
+    this.shieldRuntime.reset();
     useGameStore.getState().triggerShieldBreak();
 
     if (GAME_CONFIG.enableHaptics) {
@@ -461,7 +494,7 @@ export class GameEngine {
   private evaluateShieldCollection(
     playerProbe: ReturnType<typeof createPlayerCollisionProbe>,
   ): void {
-    if (useGameStore.getState().shieldActive) {
+    if (this.shieldRuntime.isActive()) {
       return;
     }
 
@@ -479,7 +512,8 @@ export class GameEngine {
         continue;
       }
 
-      useGameStore.getState().setShieldActive(true);
+      this.shieldRuntime.activate();
+      useGameStore.getState().setShieldState(true, 1);
 
       if (GAME_CONFIG.enableHaptics) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

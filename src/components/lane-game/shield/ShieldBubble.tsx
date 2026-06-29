@@ -1,10 +1,14 @@
 import { memo, useMemo } from 'react';
+import { Image } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
+import { SHIELD_BUBBLE_IMAGE_SOURCE } from '@/src/game/assets/definitions/shield.assets';
 import { SHIELD_CONFIG } from '@/src/game/config';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import type { PlayerMotionSharedValues } from '@/src/game/systems/player/PlayerMotionController';
 import type { PlayerSnapshot } from '@/src/game/systems/player/PlayerSystem';
+
+import { useTimedPowerUpExpiryBlink } from '../timed-power-up/useTimedPowerUpExpiryBlink';
 
 export interface ShieldBubbleProps {
   readonly snapshot: PlayerSnapshot;
@@ -13,11 +17,19 @@ export interface ShieldBubbleProps {
 
 function ShieldBubbleComponent({ snapshot, motion }: ShieldBubbleProps) {
   const shieldActive = useGameStore(gameStoreSelectors.shieldActive);
+  const shieldRemainingRatio = useGameStore(gameStoreSelectors.shieldRemainingRatio);
   const padding = SHIELD_CONFIG.bubblePaddingPx;
-  const bubbleWidth = snapshot.width + padding * 2;
-  const bubbleHeight = snapshot.height + padding * 2;
+  const scale = SHIELD_CONFIG.bubbleDisplayScale;
+  const bubbleWidth = (snapshot.width + padding * 2) * scale;
+  const bubbleHeight = (snapshot.height + padding * 2) * scale;
   const halfWidth = bubbleWidth / 2;
   const halfHeight = bubbleHeight / 2;
+
+  const blinkOpacity = useTimedPowerUpExpiryBlink({
+    active: shieldActive,
+    remainingRatio: shieldRemainingRatio,
+    durationMs: SHIELD_CONFIG.durationMs,
+  });
 
   const animatedStyle = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -25,16 +37,15 @@ function ShieldBubbleComponent({ snapshot, motion }: ShieldBubbleProps) {
     top: motion.y.value - halfHeight,
     width: bubbleWidth,
     height: bubbleHeight,
-    borderRadius: bubbleWidth / 2,
+    opacity: blinkOpacity.value,
   }));
 
-  const bubbleStyle = useMemo(
+  const imageStyle = useMemo(
     () => ({
-      borderWidth: 3,
-      borderColor: 'rgba(79, 195, 247, 0.85)',
-      backgroundColor: 'rgba(79, 195, 247, 0.18)',
+      width: bubbleWidth,
+      height: bubbleHeight,
     }),
-    [],
+    [bubbleHeight, bubbleWidth],
   );
 
   if (!shieldActive) {
@@ -42,7 +53,9 @@ function ShieldBubbleComponent({ snapshot, motion }: ShieldBubbleProps) {
   }
 
   return (
-    <Animated.View pointerEvents="none" style={[animatedStyle, bubbleStyle, { zIndex: 2 }]} />
+    <Animated.View pointerEvents="none" style={[animatedStyle, { zIndex: 2 }]}>
+      <Image source={SHIELD_BUBBLE_IMAGE_SOURCE} style={imageStyle} resizeMode="contain" />
+    </Animated.View>
   );
 }
 

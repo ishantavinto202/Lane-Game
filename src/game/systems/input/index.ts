@@ -6,3 +6,5 @@ export type {
   InputSource,
   LaneChangeResult,
 } from './input.types';
+
+export { resolveSwipeLaneDirection } from './resolve-swipe-lane-direction';

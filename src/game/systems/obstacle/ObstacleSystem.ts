@@ -1,6 +1,6 @@
 import { OBSTACLE_ASSET_MAP } from '../../assets/definitions/obstacle.assets';
 import { GAME_CONSTANTS, POOL_CONSTANTS } from '../../constants';
-import { COIN_CONFIG, SPAWN_CONFIG } from '../../config';
+import { SPAWN_CONFIG } from '../../config';
 import type {
   CoinEntity,
   GameLayout,
@@ -11,14 +11,12 @@ import type {
   SpawnContext,
   SpawnDecision,
   SpawnHistoryEntry,
-  WorldBounds,
 } from '../../types';
 import { evaluateDifficulty } from '../../utils/difficulty';
 import type { LaneSystem } from '../lane/LaneSystem';
 import {
-  boundsIntersect,
   computeEntityVisualBounds,
-  expandWorldBounds,
+  hasCollectibleObstacleSpawnConflict,
   type PickupBoundsSource,
 } from '../coin/coin-spawn-debug';
 
@@ -119,17 +117,26 @@ export class ObstacleSystem {
         }
 
         const resolvedY = this.resolveSpawnY(spawnY, asset.height);
-        const obstacleBounds = this.computeSpawnObstacleBounds(
-          lane,
-          resolvedY,
-          asset.width,
-          asset.height,
-        );
+        const obstacleX = this.laneSystem!.getCenterX(lane);
 
-        if (this.findSpawnPickupConflict(obstacleBounds, activeCoins, activeShields)) {
+        if (
+          this.findSpawnPickupConflict(
+            obstacleX,
+            resolvedY,
+            selectedType,
+            activeCoins,
+            activeShields,
+          )
+        ) {
           this.typeAudit.recordRetryFailure(
             selectedType,
-            this.diagnosePickupConflict(obstacleBounds, activeCoins, activeShields),
+            this.diagnosePickupConflict(
+              obstacleX,
+              resolvedY,
+              selectedType,
+              activeCoins,
+              activeShields,
+            ),
           );
           continue;
         }
@@ -503,24 +510,16 @@ export class ObstacleSystem {
     return Math.min(spawnY, this.layout.spawnY);
   }
 
-  private computeSpawnObstacleBounds(
-    lane: LaneIndex,
-    spawnY: number,
-    width: number,
-    height: number,
-  ): WorldBounds {
-    const obstacleX = this.laneSystem!.getCenterX(lane);
-    return computeEntityVisualBounds(obstacleX, spawnY, width, height);
-  }
-
   private findSpawnPickupConflict(
-    obstacleBounds: WorldBounds,
+    obstacleX: number,
+    obstacleY: number,
+    assetId: ObstacleAssetId,
     activeCoins: readonly CoinEntity[],
     activeShields: readonly ShieldEntity[],
   ): boolean {
     return (
-      this.hasBufferedPickupConflict(obstacleBounds, activeCoins) ||
-      this.hasBufferedPickupConflict(obstacleBounds, activeShields)
+      this.hasPickupSpawnConflict(obstacleX, obstacleY, assetId, activeCoins) ||
+      this.hasPickupSpawnConflict(obstacleX, obstacleY, assetId, activeShields)
     );
   }
 
@@ -601,34 +600,42 @@ export class ObstacleSystem {
 
   /** Dev-only — identifies pickup overlap source without altering spawn decisions. */
   private diagnosePickupConflict(
-    obstacleBounds: WorldBounds,
+    obstacleX: number,
+    obstacleY: number,
+    assetId: ObstacleAssetId,
     activeCoins: readonly CoinEntity[],
     activeShields: readonly ShieldEntity[],
   ): ObstacleSkipReasonKey {
-    if (this.hasBufferedPickupConflict(obstacleBounds, activeCoins)) {
+    if (this.hasPickupSpawnConflict(obstacleX, obstacleY, assetId, activeCoins)) {
       return 'coinConflict';
     }
 
     return 'shieldConflict';
   }
 
-  /** Mirrors CoinSystem spawn overlap — pickup AABB expanded by COIN_CONFIG margin. */
-  private hasBufferedPickupConflict(
-    obstacleBounds: WorldBounds,
+  /** Mirrors collectible spawn overlap — presentation bounds + per-type clearance. */
+  private hasPickupSpawnConflict(
+    obstacleX: number,
+    obstacleY: number,
+    assetId: ObstacleAssetId,
     pickups: readonly PickupBoundsSource[],
   ): boolean {
-    const margin = COIN_CONFIG.obstacleSafetyMarginPx;
-
     for (const pickup of pickups) {
-      const pickupCore = computeEntityVisualBounds(
+      const pickupBounds = computeEntityVisualBounds(
         pickup.x,
         pickup.y,
         pickup.width,
         pickup.height,
       );
-      const bufferedPickupBounds = expandWorldBounds(pickupCore, margin);
 
-      if (boundsIntersect(obstacleBounds, bufferedPickupBounds)) {
+      if (
+        hasCollectibleObstacleSpawnConflict(
+          pickupBounds,
+          obstacleX,
+          obstacleY,
+          assetId,
+        )
+      ) {
         return true;
       }
     }

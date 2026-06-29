@@ -1,15 +1,23 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 
-import { CoinAtlasSprite } from '../coin/CoinAtlasSprite';
+import {
+  getScoringGuideCollectibleVisualBounds,
+  SCORING_GUIDE_COIN_IMAGE_SOURCE,
+} from '@/src/game/assets/definitions/scoring-guide-voxel.assets';
 
-import { SCORING_GUIDE_ATLAS_DISPLAY_SIZE, ScoringGuideIconSlot } from './ScoringGuideIconSlot';
+import { SCORING_GUIDE_COLLECTIBLE_ICON_SCALE } from './ScoringGuideIconSlot';
+import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
 
-/** Scoring guide coin — animated atlas preview. */
+/** Scoring guide coin — static voxel preview. */
 function ScoringGuideCoinIconComponent() {
+  const visualBounds = useMemo(() => getScoringGuideCollectibleVisualBounds('coin'), []);
+
   return (
-    <ScoringGuideIconSlot>
-      <CoinAtlasSprite displaySize={SCORING_GUIDE_ATLAS_DISPLAY_SIZE} />
-    </ScoringGuideIconSlot>
+    <ScoringGuideStaticIcon
+      source={SCORING_GUIDE_COIN_IMAGE_SOURCE}
+      visualBounds={visualBounds}
+      displayScale={SCORING_GUIDE_COLLECTIBLE_ICON_SCALE}
+    />
   );
 }
 

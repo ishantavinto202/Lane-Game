@@ -2,54 +2,49 @@ import { memo, useMemo } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CONTROLS_CONSTANTS } from '@/src/game/constants';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import { GameStatus } from '@/src/game/types';
 
-const STATUS_LABELS: Record<GameStatus, string> = {
-  [GameStatus.Ready]: 'Ready',
-  [GameStatus.Countdown]: 'Get Ready',
-  [GameStatus.Playing]: 'Playing',
-  [GameStatus.Paused]: 'Paused',
-  [GameStatus.GameOver]: 'Game Over',
-};
+import {
+  GAME_HUD_BADGE,
+  GAME_HUD_HORIZONTAL_INSET,
+  GAME_HUD_TOP_OFFSET,
+  GAME_HUD_Z_INDEX,
+} from '../ui/game-hud.styles';
 
 function UiLayerComponent() {
   const insets = useSafeAreaInsets();
   const status = useGameStore(gameStoreSelectors.status);
   const scoreSnapshot = useGameStore(gameStoreSelectors.scoreSnapshot);
 
-  const statusLabel = useMemo(() => {
-    if (status === GameStatus.Playing || status === GameStatus.Paused) {
-      return `${STATUS_LABELS[status]} · ${scoreSnapshot.currentScore}`;
-    }
-
-    return STATUS_LABELS[status];
-  }, [scoreSnapshot.currentScore, status]);
-
-  const bestLabel = useMemo(
-    () => `Best ${scoreSnapshot.bestScore}`,
-    [scoreSnapshot.bestScore],
-  );
-
   const containerStyle = useMemo<ViewStyle>(
     () => ({
-      top: insets.top + 12,
-      left: CONTROLS_CONSTANTS.BUTTON_PADDING,
+      top: insets.top + GAME_HUD_TOP_OFFSET,
+      left: GAME_HUD_HORIZONTAL_INSET,
     }),
     [insets.top],
   );
 
-  const showBadge = status !== GameStatus.GameOver;
+  const scoreLabel = useMemo(
+    () => scoreSnapshot.currentScore.toLocaleString(),
+    [scoreSnapshot.currentScore],
+  );
 
-  if (!showBadge) {
+  const bestLabel = useMemo(
+    () => `Best ${scoreSnapshot.bestScore.toLocaleString()}`,
+    [scoreSnapshot.bestScore],
+  );
+
+  const isVisible = status !== GameStatus.GameOver;
+
+  if (!isVisible) {
     return null;
   }
 
   return (
     <View pointerEvents="none" style={[styles.layer, containerStyle]}>
       <View style={styles.badge}>
-        <Text style={styles.status}>{statusLabel}</Text>
+        <Text style={styles.score}>{scoreLabel}</Text>
         <Text style={styles.best}>{bestLabel}</Text>
       </View>
     </View>
@@ -59,32 +54,30 @@ function UiLayerComponent() {
 const styles = StyleSheet.create({
   layer: {
     position: 'absolute',
-    zIndex: 10001,
-    elevation: 10001,
+    zIndex: GAME_HUD_Z_INDEX,
+    elevation: GAME_HUD_Z_INDEX,
     alignItems: 'flex-start',
   },
   badge: {
-    borderRadius: 999,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: GAME_HUD_BADGE.borderRadius,
+    backgroundColor: GAME_HUD_BADGE.backgroundColor,
+    paddingHorizontal: GAME_HUD_BADGE.paddingHorizontal,
+    paddingVertical: GAME_HUD_BADGE.paddingVertical,
+    minWidth: 88,
   },
-  status: {
+  score: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    textAlign: 'left',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    lineHeight: 32,
   },
   best: {
-    marginTop: 4,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    textAlign: 'left',
+    marginTop: 2,
+    color: 'rgba(255, 255, 255, 0.58)',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });
 

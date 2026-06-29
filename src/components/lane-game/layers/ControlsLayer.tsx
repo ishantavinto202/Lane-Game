@@ -1,14 +1,17 @@
 import { CaretLeft, CaretRight } from 'phosphor-react-native';
 import { memo, useCallback, useMemo, type RefObject } from 'react';
 import { useWindowDimensions, View, type ViewStyle } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CONTROLS_CONSTANTS } from '@/src/game/constants';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import type { InputManager } from '@/src/game/systems/input/InputManager';
+import type { LaneDirection } from '@/src/game/types';
 import { GameStatus } from '@/src/game/types';
 
 import { ControlButton } from '../controls/ControlButton';
+import { LaneSwipeSurface } from '../controls/LaneSwipeSurface';
 
 export interface ControlsLayerProps {
   readonly inputManagerRef: RefObject<InputManager | null>;
@@ -49,6 +52,7 @@ function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      zIndex: 1,
     };
   }, [insets.top, insets.bottom, windowHeight]);
 
@@ -60,8 +64,19 @@ function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
     inputManagerRef.current?.requestLaneChange('right', 'button');
   }, [inputManagerRef]);
 
+  const handleSwipe = useCallback(
+    (direction: LaneDirection) => {
+      inputManagerRef.current?.requestLaneChange(direction, 'swipe');
+    },
+    [inputManagerRef],
+  );
+
   return (
-    <View pointerEvents={isGameOver ? 'none' : 'box-none'} style={layerStyle}>
+    <GestureHandlerRootView
+      pointerEvents={isGameOver ? 'none' : 'box-none'}
+      style={layerStyle}
+    >
+      <LaneSwipeSurface enabled={isPlaying} onSwipe={handleSwipe} />
       <View pointerEvents="box-none" style={rowStyle}>
         <ControlButton
           accessibilityLabel="Move left"
@@ -76,7 +91,7 @@ function ControlsLayerComponent({ inputManagerRef }: ControlsLayerProps) {
           onPress={handleMoveRight}
         />
       </View>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

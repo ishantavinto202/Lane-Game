@@ -1,10 +1,13 @@
 import { RenderLayer } from '../../types';
 import type { AssetDefinition } from '../../types';
 
-/** Source bitmap — Shield voxel artwork, rendered at SHIELD_CONFIG.size (44×44). */
+/** HUD shield icon — static voxel artwork. Pickups use `SHIELD_ATLAS_TEXTURE` via `ShieldAtlasSprite`. */
 export const SHIELD_IMAGE_SOURCE = require('../../../../assets/voxel/Shield Asset.png');
 
-/** Collectible shield pickup — 44×44 display size with voxel artwork. */
+/** Active shield bubble overlay — voxel artwork centered on the player car. */
+export const SHIELD_BUBBLE_IMAGE_SOURCE = require('../../../../assets/voxel/Bubble.png');
+
+/** Collectible shield pickup — 44×44 display size with animated atlas artwork. */
 export const SHIELD_ASSET: AssetDefinition = {
   id: 'SHIELD',
   width: 44,

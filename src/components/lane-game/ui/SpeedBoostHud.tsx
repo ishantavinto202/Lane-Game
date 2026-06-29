@@ -7,6 +7,8 @@ import { SPEED_BOOST_CONFIG } from '@/src/game/config';
 import { gameStoreSelectors, useGameStore } from '@/src/game/store';
 import { GameStatus } from '@/src/game/types';
 
+import { GAME_HUD_TOP_OFFSET } from './game-hud.styles';
+
 function SpeedBoostHudComponent() {
   const insets = useSafeAreaInsets();
   const status = useGameStore(gameStoreSelectors.status);
@@ -17,7 +19,7 @@ function SpeedBoostHudComponent() {
 
   const containerStyle = useMemo<ViewStyle>(
     () => ({
-      top: insets.top + 52,
+      top: insets.top + GAME_HUD_TOP_OFFSET + 56,
     }),
     [insets.top],
   );

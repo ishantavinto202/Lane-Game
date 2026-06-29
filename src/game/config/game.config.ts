@@ -68,6 +68,14 @@ export const CONTROLS_CONFIG = {
   maxQueuedLaneChanges: 1,
   hapticOnPress: true,
   animatePressScale: true,
+  /** Minimum horizontal swipe distance before a lane change is accepted. */
+  swipeMinDistancePx: 60,
+  /** Horizontal travel must exceed vertical travel by this factor. */
+  swipeHorizontalDominanceRatio: 1.5,
+  /** Pan gesture activates after this horizontal movement (px). */
+  swipeActiveOffsetX: 12,
+  /** Pan gesture fails if vertical movement exceeds this before activation (px). */
+  swipeFailOffsetY: 24,
 } as const;
 
 /** Audio volumes (Phase 4 wiring). */
@@ -119,6 +127,22 @@ export const OBSTACLE_PENALTY_CONFIG = {
   OBSTACLE_PUDDLE: { healthLoss: 0, scorePenalty: 25 },
 } as const;
 
+/** Shared spawn spacing for coin, shield, and speed boost pickups. */
+export const COLLECTIBLE_SPAWN_CONFIG = {
+  /** Minimum edge-to-edge gap between any two active collectibles. */
+  minCollectibleSpacingPx: 48,
+  /** Base clearance added to every obstacle presentation bound before collectible spawn tests. */
+  obstacleCollectibleBaseClearancePx: 12,
+  /** Extra per-type clearance on top of base — wider/taller sprites get more breathing room. */
+  obstacleCollectibleClearanceByType: {
+    OBSTACLE_PUDDLE: 36,
+    OBSTACLE_BARRIER: 28,
+    OBSTACLE_CRATE: 18,
+    OBSTACLE_TIRE: 18,
+    OBSTACLE_CONE: 10,
+  },
+} as const;
+
 /** Coin spawn, collection, and pooling (Phase 4.2). */
 export const COIN_CONFIG = {
   size: 38,
@@ -156,7 +180,11 @@ export const SHIELD_CONFIG = {
   hitboxScale: 0.88,
   minCollectionOverlapArea: 45,
   breakEffectDurationMs: 240,
+  /** Active shield duration after pickup — expires naturally or on first absorb. */
+  durationMs: 10000,
   bubblePaddingPx: 24,
+  /** Visual scale applied to the active shield bubble overlay (1 = base envelope). */
+  bubbleDisplayScale: 1.15,
 } as const;
 
 /** Speed boost pickup spawn, collection, and active boost tuning (Phase 5.5). */

@@ -1,8 +1,9 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { View } from 'react-native';
 
 import type { ShieldRenderBridge } from '@/src/game/systems/shield/shield-motion.types';
 
+import { ensureShieldAnimationClock } from '../shield/shieldAnimationClock';
 import { ShieldSprite } from '../shield/ShieldSprite';
 
 export interface ShieldLayerProps {
@@ -12,6 +13,10 @@ export interface ShieldLayerProps {
 
 function ShieldLayerComponent({ renderBridge, poolRevision }: ShieldLayerProps) {
   void poolRevision;
+
+  useEffect(() => {
+    ensureShieldAnimationClock();
+  }, []);
 
   return (
     <View pointerEvents="none" className="absolute inset-0">

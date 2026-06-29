@@ -10,7 +10,6 @@ import { ScoringGuideModal } from '../scoring-guide/ScoringGuideModal';
 function GameOverOverlayComponent() {
   const status = useGameStore(gameStoreSelectors.status);
   const scoreSnapshot = useGameStore(gameStoreSelectors.scoreSnapshot);
-  const runStats = useGameStore(gameStoreSelectors.runStats);
   const restartRun = useGameStore(gameStoreSelectors.restartRun);
   const [scoringGuideVisible, setScoringGuideVisible] = useState(false);
 
@@ -30,7 +29,6 @@ function GameOverOverlayComponent() {
 
   const scoreText = useMemo(() => String(scoreSnapshot.currentScore), [scoreSnapshot.currentScore]);
   const bestText = useMemo(() => String(scoreSnapshot.bestScore), [scoreSnapshot.bestScore]);
-  const runsText = useMemo(() => String(runStats.totalRuns), [runStats.totalRuns]);
 
   if (!isVisible) {
     return null;
@@ -50,11 +48,6 @@ function GameOverOverlayComponent() {
           <View style={styles.scoreRow}>
             <Text style={styles.scoreLabel}>Best</Text>
             <Text style={styles.bestValue}>{bestText}</Text>
-          </View>
-
-          <View style={styles.scoreRow}>
-            <Text style={styles.scoreLabel}>Runs</Text>
-            <Text style={styles.scoreValue}>{runsText}</Text>
           </View>
 
           <Pressable

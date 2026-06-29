@@ -8,6 +8,7 @@ export {
   SHIELD_CONFIG,
   SPEED_BOOST_CONFIG,
   COLLISION_CONFIG,
+  COLLECTIBLE_SPAWN_CONFIG,
   CONTROLS_CONFIG,
   COUNTDOWN_CONFIG,
   DIFFICULTY_CONFIG,
@@ -19,6 +20,8 @@ export {
   SCORE_CONFIG,
   SPAWN_CONFIG,
 } from './game.config';
+
+export { TIMED_POWER_UP_UI_CONFIG } from './timed-power-up.config';
 
 export { DECORATION_CONFIG } from './decoration.config';
 

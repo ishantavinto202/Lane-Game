@@ -15,8 +15,10 @@ export interface ScoringGuideIconLayout {
 export function computeScoringGuideIconLayout(
   bounds: ScoringGuideVisualBounds,
   slotSize: number = SCORING_GUIDE_ICON_SIZE,
+  displayScale: number = 1,
 ): ScoringGuideIconLayout {
-  const scale = Math.min(slotSize / bounds.sourceWidth, slotSize / bounds.sourceHeight);
+  const fitScale = Math.min(slotSize / bounds.sourceWidth, slotSize / bounds.sourceHeight);
+  const scale = fitScale * displayScale;
   const width = bounds.sourceWidth * scale;
   const height = bounds.sourceHeight * scale;
 

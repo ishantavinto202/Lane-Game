@@ -25,7 +25,7 @@ export const PLAYER_CAR_DEFAULT: PlayerCarSkinDefinition = {
   sourceHeight: 241,
   spriteWidth: 116,
   spriteHeight: 140,
-  visualOffsetX: -76,
+  visualOffsetX: -72.52,
   visualOffsetY: -70,
   collisionBox: {
     offsetX: -30,

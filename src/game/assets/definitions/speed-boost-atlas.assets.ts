@@ -14,7 +14,7 @@ import speedBoostAtlasJson from '../../../../assets/Thunder Animations/texture.j
 export type SpeedBoostAtlasSpinFrame = AtlasSpinFrame;
 export type SpeedBoostAtlasFrameLayout = AtlasFrameLayout;
 
-export const SPEED_BOOST_ATLAS_FPS = 14.5;
+export const SPEED_BOOST_ATLAS_FPS = 18.85;
 
 export const SPEED_BOOST_ATLAS_TEXTURE: ImageSourcePropType = require('../../../../assets/Thunder Animations/texture.png');
 

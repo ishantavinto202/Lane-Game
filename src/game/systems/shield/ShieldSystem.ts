@@ -1,14 +1,25 @@
 import { SHIELD_ASSET } from '../../assets/definitions/shield.assets';
-import { SHIELD_CONFIG } from '../../config';
-import type { CoinEntity, LaneIndex, ObstacleEntity, ShieldEntity } from '../../types';
+import {
+  COIN_CONFIG,
+  COLLECTIBLE_SPAWN_CONFIG,
+  SHIELD_CONFIG,
+  SPEED_BOOST_CONFIG,
+} from '../../config';
+import type {
+  CoinEntity,
+  LaneIndex,
+  ObstacleEntity,
+  ShieldEntity,
+  SpeedBoostEntity,
+} from '../../types';
 import type { CollisionProbe } from '../../types';
 import { boundsOverlap, computeWorldBounds } from '../../utils/collision-bounds';
 import type { LaneSystem } from '../lane/LaneSystem';
 import {
-  boundsIntersect,
   computeEntityVisualBounds,
-  expandWorldBounds,
+  findObstacleCollectibleSpawnConflict,
   findPickupBoundsConflict,
+  type PickupBoundsSource,
 } from '../coin/coin-spawn-debug';
 
 import type { ShieldRenderBridge } from './shield-motion.types';
@@ -91,6 +102,7 @@ export class ShieldSystem {
     speedPxPerSec: number,
     activeObstacles: readonly ObstacleEntity[],
     activeCoins: readonly CoinEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
   ): readonly ShieldEntity[] {
     if (!this.layout || !this.laneSystem) {
       return [];
@@ -101,7 +113,7 @@ export class ShieldSystem {
     while (this.spawnAccumulatorMs >= this.nextSpawnIntervalMs) {
       this.spawnAccumulatorMs -= this.nextSpawnIntervalMs;
       this.nextSpawnIntervalMs = randomSpawnIntervalMs();
-      this.trySpawn(activeObstacles, activeCoins, speedPxPerSec);
+      this.trySpawn(activeObstacles, activeCoins, activeSpeedBoosts, speedPxPerSec);
     }
 
     const deltaPx = (speedPxPerSec * deltaMs) / 1000;
@@ -196,6 +208,7 @@ export class ShieldSystem {
   private trySpawn(
     activeObstacles: readonly ObstacleEntity[],
     activeCoins: readonly CoinEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
     speedPxPerSec: number,
   ): void {
     if (!this.layout || !this.laneSystem) {
@@ -206,7 +219,11 @@ export class ShieldSystem {
       return;
     }
 
-    const spawnPosition = this.pickSpawnPosition(activeObstacles, activeCoins);
+    const spawnPosition = this.pickSpawnPosition(
+      activeObstacles,
+      activeCoins,
+      activeSpeedBoosts,
+    );
 
     if (spawnPosition === null) {
       return;
@@ -259,9 +276,11 @@ export class ShieldSystem {
   private pickSpawnPosition(
     activeObstacles: readonly ObstacleEntity[],
     activeCoins: readonly CoinEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
   ): { lane: LaneIndex; spawnY: number } | null {
     const baseSpawnY = this.layout!.spawnY;
     const shuffledLanes = shuffleLanes([0, 1, 2]);
+    const otherCollectibles = this.toCollectibleBoundsSources(activeCoins, activeSpeedBoosts);
 
     for (const yOffset of SHIELD_CONFIG.spawnYRetryOffsetsPx) {
       const spawnY = baseSpawnY + yOffset;
@@ -273,7 +292,11 @@ export class ShieldSystem {
 
         const shieldBounds = this.computeSpawnShieldBounds(lane, spawnY);
 
-        const pickupConflict = findPickupBoundsConflict(shieldBounds, activeCoins);
+        const pickupConflict = findPickupBoundsConflict(
+          shieldBounds,
+          otherCollectibles,
+          COLLECTIBLE_SPAWN_CONFIG.minCollectibleSpacingPx,
+        );
         if (pickupConflict) {
           continue;
         }
@@ -318,23 +341,31 @@ export class ShieldSystem {
     shieldBounds: ReturnType<typeof computeEntityVisualBounds>,
     activeObstacles: readonly ObstacleEntity[],
   ): boolean {
-    const margin = SHIELD_CONFIG.obstacleSafetyMarginPx;
+    return findObstacleCollectibleSpawnConflict(shieldBounds, activeObstacles) !== null;
+  }
 
-    for (const obstacle of activeObstacles) {
-      const obstacleCore = computeEntityVisualBounds(
-        obstacle.x,
-        obstacle.y,
-        obstacle.width,
-        obstacle.height,
-      );
-      const bufferedObstacleBounds = expandWorldBounds(obstacleCore, margin);
-
-      if (boundsIntersect(shieldBounds, bufferedObstacleBounds)) {
-        return true;
-      }
-    }
-
-    return false;
+  private toCollectibleBoundsSources(
+    activeCoins: readonly CoinEntity[],
+    activeSpeedBoosts: readonly SpeedBoostEntity[],
+  ): readonly PickupBoundsSource[] {
+    return [
+      ...activeCoins.map(
+        (coin): PickupBoundsSource => ({
+          x: coin.x,
+          y: coin.y,
+          width: COIN_CONFIG.size,
+          height: COIN_CONFIG.size,
+        }),
+      ),
+      ...activeSpeedBoosts.map(
+        (speedBoost): PickupBoundsSource => ({
+          x: speedBoost.x,
+          y: speedBoost.y,
+          width: SPEED_BOOST_CONFIG.size,
+          height: SPEED_BOOST_CONFIG.size,
+        }),
+      ),
+    ];
   }
 
   private claimRenderIndex(): number | null {

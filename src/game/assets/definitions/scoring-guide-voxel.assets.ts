@@ -16,6 +16,52 @@ export const SCORING_GUIDE_COIN_IMAGE_SOURCE: ImageSourcePropType = require('../
 /** Scoring Guide modal only — do not use for in-game sprites. */
 export const SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/Voxel asset guide/Blue_Thunder_Asset.png');
 
+/** Scoring Guide modal only — do not use for in-game sprites. */
+export const SCORING_GUIDE_SHIELD_IMAGE_SOURCE: ImageSourcePropType = require('../../../../assets/Voxel asset guide/Sheld Guide.png');
+
+const SCORING_GUIDE_COLLECTIBLE_VISUAL_BOUNDS = {
+  coin: {
+    sourceWidth: 323,
+    sourceHeight: 323,
+    visualCenterX: 161.5,
+    visualCenterY: 161.5,
+  },
+  shield: {
+    sourceWidth: 179,
+    sourceHeight: 196,
+    visualCenterX: 89.5,
+    visualCenterY: 98,
+  },
+  speedBoost: {
+    sourceWidth: 245,
+    sourceHeight: 362,
+    visualCenterX: 122.5,
+    visualCenterY: 181,
+  },
+} as const satisfies Record<string, ScoringGuideVisualBounds>;
+
+export type ScoringGuideCollectibleId = keyof typeof SCORING_GUIDE_COLLECTIBLE_VISUAL_BOUNDS;
+
+export function getScoringGuideCollectibleImageSource(
+  id: ScoringGuideCollectibleId,
+): ImageSourcePropType {
+  if (id === 'coin') {
+    return SCORING_GUIDE_COIN_IMAGE_SOURCE;
+  }
+
+  if (id === 'shield') {
+    return SCORING_GUIDE_SHIELD_IMAGE_SOURCE;
+  }
+
+  return SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE;
+}
+
+export function getScoringGuideCollectibleVisualBounds(
+  id: ScoringGuideCollectibleId,
+): ScoringGuideVisualBounds {
+  return SCORING_GUIDE_COLLECTIBLE_VISUAL_BOUNDS[id];
+}
+
 const SCORING_GUIDE_OBSTACLE_IMAGE_SOURCES: Record<ObstacleAssetId, ImageSourcePropType> = {
   OBSTACLE_CONE: require('../../../../assets/Voxel asset guide/Cone_1.png'),
   OBSTACLE_TIRE: require('../../../../assets/Voxel asset guide/Tyre_3.png'),
