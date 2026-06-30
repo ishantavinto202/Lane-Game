@@ -1,24 +1,19 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 
 import {
-  getScoringGuideCollectibleVisualBounds,
   SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE,
+  SCORING_GUIDE_SPEED_BOOST_VISUAL_BOUNDS,
 } from '@/src/game/assets/definitions/scoring-guide-voxel.assets';
 
 import { SCORING_GUIDE_COLLECTIBLE_ICON_SCALE } from './ScoringGuideIconSlot';
 import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
 
-/** Scoring guide speed boost — static voxel preview. */
+/** Scoring guide speed boost — static Blue_Thunder_Asset.png preview. */
 function ScoringGuideSpeedBoostIconComponent() {
-  const visualBounds = useMemo(
-    () => getScoringGuideCollectibleVisualBounds('speedBoost'),
-    [],
-  );
-
   return (
     <ScoringGuideStaticIcon
       source={SCORING_GUIDE_SPEED_BOOST_IMAGE_SOURCE}
-      visualBounds={visualBounds}
+      visualBounds={SCORING_GUIDE_SPEED_BOOST_VISUAL_BOUNDS}
       displayScale={SCORING_GUIDE_COLLECTIBLE_ICON_SCALE}
     />
   );

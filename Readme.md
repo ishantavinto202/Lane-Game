@@ -6,26 +6,26 @@ Expo SDK 53 · React Native 0.79 · Reanimated · Zustand · NativeWind
 
 ## App Navigation
 
-The lane game runs **outside** the tab navigator for fullscreen, professional mobile-game behavior (no tab bar, no safe-area conflicts).
+The lane game runs on a **separate stack route** for fullscreen, professional mobile-game behavior (no tab bar, no safe-area conflicts).
 
 ```txt
 app/
-├── _layout.tsx          Root stack
+├── _layout.tsx          Root stack — initial route: index (home)
+├── index.tsx            Home landing → preload assets → router.push('/lane-game')
 ├── lane-game.tsx        Fullscreen game route → GameScreen
-└── (tabs)/
-    ├── _layout.tsx      Tab navigator (Home, Tab Two)
-    └── index.tsx        Home landing → preload assets → router.push('/lane-game')
+└── dailyWord/           Daily Word nested stack (unchanged)
 
 src/game/assets/
 └── preload-lane-game-images.ts   Lane-only Image.prefetch before navigation
 ```
 
-- **Home tab** (`/(tabs)`) — landing with **Play** button
-- **Game route** (`/lane-game`) — pushed onto root stack; no bottom tab bar
+- **Home** (`/`) — landing with **Play** button
+- **Game route** (`/lane-game`) — pushed onto root stack after asset preload; no bottom tab bar
 - **Launch flow:** tap **Play** → button disables immediately → all Lane PNGs prefetch → `router.push('/lane-game')`
 - **Double-tap guard:** synchronous ref lock + disabled Pressable; only one navigation per launch
-- **Return to Home:** `useFocusEffect` resets Play button to idle when the tab regains focus
+- **Return to Home:** `useFocusEffect` resets Play button to idle when home regains focus
 - **Preload scope:** player, road, grass, sidewalk, obstacles, coins (atlas), shield (atlas + HUD voxel), speed boost, trees, HUD hearts — no Daily Word or audio assets
+- **Daily Word** (`/dailyWord/*`) — independent nested stack; not linked from Lane home
 
 ---
 
@@ -47,7 +47,7 @@ Phase 2 adds on-screen controls and smooth lane-based movement. Road continues s
 
 ### What You Can Run Today
 
-- Home tab → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
+- Home → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
 - Tap **←** / **→** (bottom corners) → player moves one lane per tap
 - **Swipe left / right** anywhere on the playfield → same single-lane movement (`source: 'swipe'`)
 - Invalid moves at lane boundaries are ignored (Lane 0 + left = no-op)

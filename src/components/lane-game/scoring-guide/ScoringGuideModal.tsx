@@ -18,8 +18,11 @@ import {
   type ScoringGuideObstacleEntry,
 } from '@/src/game/content/scoring-guide.content';
 
+import {
+  SCORING_GUIDE_COLLECTIBLE_ICON_SCALE,
+  SCORING_GUIDE_OBSTACLE_ICON_SCALE,
+} from './ScoringGuideIconSlot';
 import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
-import { SCORING_GUIDE_COLLECTIBLE_ICON_SCALE, SCORING_GUIDE_OBSTACLE_ICON_SCALE } from './ScoringGuideIconSlot';
 
 const REWARD_COLOR = '#34C759';
 const PENALTY_COLOR = '#FF453A';
@@ -65,33 +68,32 @@ function GuideRow({
           {subtitle}
         </Text>
       </View>
-      {healthLabel || scoreLabel ? (
-        <View style={styles.penaltyColumn}>
-          {healthLabel ? (
-            <View style={styles.healthBadge}>
-              <Text style={styles.healthPenalty}>{healthLabel}</Text>
-            </View>
-          ) : null}
-          {scoreLabel ? (
-            <View
+      <View style={styles.penaltyColumn}>
+        {healthLabel ? (
+          <View style={styles.healthBadge}>
+            <Text style={styles.healthPenalty}>{healthLabel}</Text>
+          </View>
+        ) : null}
+        {scoreLabel ? (
+          <View
+            style={[
+              styles.scoreBadge,
+              scoreTone === 'reward' && styles.scoreBadgeReward,
+              scoreTone === 'penalty' && styles.scoreBadgePenalty,
+            ]}
+          >
+            <Text
               style={[
-                styles.scoreBadge,
-                scoreTone === 'reward' && styles.scoreBadgeReward,
+                styles.scorePenalty,
+                scoreTone === 'reward' && styles.rewardText,
+                scoreTone === 'penalty' && styles.penaltyText,
               ]}
             >
-              <Text
-                style={[
-                  styles.scorePenalty,
-                  scoreTone === 'reward' && styles.rewardText,
-                  scoreTone === 'penalty' && styles.penaltyText,
-                ]}
-              >
-                {scoreLabel}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+              {scoreLabel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -367,26 +369,38 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   healthBadge: {
+    minWidth: 44,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 69, 58, 0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 69, 58, 0.28)',
   },
   scoreBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 69, 58, 0.12)',
     minWidth: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   scoreBadgeReward: {
-    backgroundColor: 'rgba(52, 199, 89, 0.12)',
+    backgroundColor: 'rgba(52, 199, 89, 0.14)',
+    borderColor: 'rgba(52, 199, 89, 0.28)',
+  },
+  scoreBadgePenalty: {
+    backgroundColor: 'rgba(255, 69, 58, 0.14)',
+    borderColor: 'rgba(255, 69, 58, 0.28)',
   },
   scorePenalty: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   rewardText: {
     color: REWARD_COLOR,
@@ -398,6 +412,7 @@ const styles = StyleSheet.create({
     color: PENALTY_COLOR,
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

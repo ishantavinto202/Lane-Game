@@ -1,21 +1,19 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 
 import {
-  getScoringGuideCollectibleVisualBounds,
   SCORING_GUIDE_SHIELD_IMAGE_SOURCE,
+  SCORING_GUIDE_SHIELD_VISUAL_BOUNDS,
 } from '@/src/game/assets/definitions/scoring-guide-voxel.assets';
 
 import { SCORING_GUIDE_COLLECTIBLE_ICON_SCALE } from './ScoringGuideIconSlot';
 import { ScoringGuideStaticIcon } from './ScoringGuideStaticIcon';
 
-/** Scoring guide shield — static voxel preview. */
+/** Scoring guide shield — static Sheld Guide.png preview. */
 function ScoringGuideShieldIconComponent() {
-  const visualBounds = useMemo(() => getScoringGuideCollectibleVisualBounds('shield'), []);
-
   return (
     <ScoringGuideStaticIcon
       source={SCORING_GUIDE_SHIELD_IMAGE_SOURCE}
-      visualBounds={visualBounds}
+      visualBounds={SCORING_GUIDE_SHIELD_VISUAL_BOUNDS}
       displayScale={SCORING_GUIDE_COLLECTIBLE_ICON_SCALE}
     />
   );
