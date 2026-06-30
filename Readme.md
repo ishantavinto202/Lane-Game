@@ -1,31 +1,32 @@
 # Lane — Endless Car Avoidance Game
 
+> **New to this project?** Read [docs/PROJECT_SUMMARY.md](./docs/PROJECT_SUMMARY.md) first — executive overview of gameplay, architecture, and current status.
+
 Expo SDK 53 · React Native 0.79 · Reanimated · Zustand · NativeWind
 
 ---
 
 ## App Navigation
 
-The lane game runs on a **separate stack route** for fullscreen, professional mobile-game behavior (no tab bar, no safe-area conflicts).
+The lane game runs from a dedicated home screen into a fullscreen stack route (no tab bar, no safe-area conflicts).
 
 ```txt
 app/
-├── _layout.tsx          Root stack — initial route: index (home)
-├── index.tsx            Home landing → preload assets → router.push('/lane-game')
+├── _layout.tsx          Root stack
+├── index.tsx            Jam Ride landing → preload assets → router.push('/lane-game')
 ├── lane-game.tsx        Fullscreen game route → GameScreen
-└── dailyWord/           Daily Word nested stack (unchanged)
+└── dailyWord/           Daily Word nested stack
 
 src/game/assets/
 └── preload-lane-game-images.ts   Lane-only Image.prefetch before navigation
 ```
 
-- **Home** (`/`) — landing with **Play** button
-- **Game route** (`/lane-game`) — pushed onto root stack after asset preload; no bottom tab bar
+- **Home route** (`/`) — dark Jam Ride landing with logo, animated car, score placeholders, Play, and Exit placeholder
+- **Game route** (`/lane-game`) — pushed onto root stack; no bottom tab bar
 - **Launch flow:** tap **Play** → button disables immediately → all Lane PNGs prefetch → `router.push('/lane-game')`
 - **Double-tap guard:** synchronous ref lock + disabled Pressable; only one navigation per launch
-- **Return to Home:** `useFocusEffect` resets Play button to idle when home regains focus
+- **Return to Home:** `useFocusEffect` resets Play button to idle when the home route regains focus
 - **Preload scope:** player, road, grass, sidewalk, obstacles, coins (atlas), shield (atlas + HUD voxel), speed boost, trees, HUD hearts — no Daily Word or audio assets
-- **Daily Word** (`/dailyWord/*`) — independent nested stack; not linked from Lane home
 
 ---
 
@@ -47,7 +48,7 @@ Phase 2 adds on-screen controls and smooth lane-based movement. Road continues s
 
 ### What You Can Run Today
 
-- Home → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
+- Home route → tap **Play** → fullscreen **`/lane-game`** route; road scrolls on start, arrow buttons active
 - Tap **←** / **→** (bottom corners) → player moves one lane per tap
 - **Swipe left / right** anywhere on the playfield → same single-lane movement (`source: 'swipe'`)
 - Invalid moves at lane boundaries are ignored (Lane 0 + left = no-op)
@@ -776,13 +777,12 @@ A minimal in-game reference for every collectible reward and obstacle penalty �
 - **Pause screen** — **Resume** primary button + **ⓘ Scoring Guide** secondary button below
 - **Game Over screen** — **Play Again** primary button + **ⓘ Scoring Guide** secondary button below
 - **Modal** — compact card (~58% viewport height, max 460px), blur + dim overlay, scrollable on small screens, tap outside or **×** to dismiss
-- **Layout** — three-column rows: **48×48** centered icon, bold title + muted subtitle, right-aligned inline penalties
+- **Layout** — three-column rows: **48×48** centered icon, bold title + muted subtitle, right-aligned score / health badges
 - **Header** — bold **Scoring Guide** title, phosphor **×** close button (top-right), hairline divider
 - **Sections** — `Collectibles` and `Obstacles` labels with extra whitespace between groups; hairline row dividers (no heavy card borders)
-- **Typography** — rewards as green `+N`; penalties as large red `-N`; health `❤ -N` inline beside score on the same line (Crate, Barrier)
+- **Typography** — rewards as green `+N`; penalties as red `-N`; health `❤ -N` in a separate red badge
 - **Data source** — `scoring-guide.content.ts` reads `COIN_CONFIG`, `SHIELD_CONFIG`, `SPEED_BOOST_CONFIG`, and `OBSTACLE_PENALTY_CONFIG` (no duplicated gameplay values)
-- **Collectibles** — Coin, Shield (`Absorbs one hit · lasts 10s`), Speed Boost (`2× speed · lasts 3s`); durations sourced from config
-- **Assets** — static voxel PNGs for all collectibles and obstacles in `assets/Voxel asset guide/` at fit scale inside **48×48** slots
+- **Assets** — static voxel PNGs for Coin, Shield, Speed Boost, and obstacles in `assets/Voxel asset guide/`; collectible icons render at **70%** fit scale inside **48×48** slots
 - In-game sprites unchanged — gameplay atlases and obstacle skins untouched
 - Game stays paused / game-over while the guide is open
 
